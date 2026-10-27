@@ -29,6 +29,8 @@ This log lists which Claude Code agents and skills produced each planning docume
 | 2026-10-24 | `/product-brainstorm` (skill) | Started the guided session from the brief in `product-brainstorm-template-dotnet10-webapi.md`. The skill sets the phase order, approval gates, the 5-questions-per-message rule and the tracker rules |
 
 | 2026-10-24 to 2026-10-27 | `/rate-limit-options` | Run by the user during the session (not an agent call) |
+| 2026-10-27 | `claude mcp add` (CLI, not an agent) | Added `ado-read` and `ado-write` (`@azure-devops/mcp`, org `codewithelmor`) to the Demo-API local scope so `azdo-boards-manager` can reach Azure DevOps. Switched to `-a pat` because browser sign-in rejects personal Microsoft accounts; both servers start through `~/.claude/scripts/ado-mcp.ps1`, which reads the token from the `PERSONAL_ACCESS_TOKEN` user environment variable (never stored in config). Token verified; project `Demo-API` not created yet |
+| 2026-10-27 | `/commit` (skill) | First commit of the planning docs (`ef1029b`, on `master`) after the user confirmed the message |
 
 
 
@@ -71,6 +73,9 @@ This log lists which Claude Code agents and skills produced each planning docume
 | 16 | 2026-10-27 | 9 Quality | `qa-strategist` | `test-strategy` | WebSearch, WebFetch | `07-quality/test-strategy.md` approved, decisions Q-D1..Q-D6 |
 | 17 | 2026-10-27 | 8 Delivery | `delivery-planner` | – | WebSearch, WebFetch | `06-delivery/delivery-plan.md` (approved, DL-D1..DL-D6): roadmap, time-boxes, risk register, 168-item Azure DevOps preview |
 | 18 | 2026-10-27 | 8 Delivery (tracker) | `azdo-boards-manager` (preview only) | `work-item-standards`; `azdo-setup`, `azdo-plan-to-work-items` | none (Azure DevOps read tools not connected) | Draft setup preview + 168-item work-item preview from the docs; blocked on org/project and `ado-read` sign-in; nothing created |
+| 19 | 2026-10-27 | 8 Delivery (tracker) | `azdo-boards-manager` (preview only) | `work-item-standards`; `azdo-setup`, `azdo-plan-to-work-items` | ado-read: core_list_project_teams, wit_backlog, wit_query, wit_work_item, work | [06-delivery/azdo-preview.md](06-delivery/azdo-preview.md): project verified (Agile, empty backlog), 9 manual UI setup steps (S-1..S-9), 168 items / 160 parent links / 31 dependency links; nothing created |
+| 20 | 2026-10-27 | 8 Delivery (tracker) | `azdo-boards-manager` (apply, resumed) | as #19 | ado-read (checks); ado-write `wit_work_item_write` denied by auto-mode permission check | Setup S-1..S-5 verified, 0 duplicates; first create blocked, nothing created. [azdo-map.md](azdo-map.md) skeleton; "Applied status" added to [azdo-preview.md](06-delivery/azdo-preview.md) |
+| 21 | 2026-10-27 | 8 Delivery (tracker) | main session (no agent; `azdo-boards-manager` APPLY was blocked) | – | ado-write `wit_work_item_write` (E1), then a REST script with the same PAT | 168 work items + 160 parent and 31 dependency links created and verified; [azdo-map.md](azdo-map.md) |
 
 Notes:
 

@@ -14,7 +14,7 @@ Mode: Standard (confirmed 2026-10-24)
 ## Links
 - **Tracker:** Azure DevOps Boards (chosen 2026-10-24); run `azdo-setup` before first push
 - **Linear project:** not used yet
-- **Azure DevOps:** not used yet
+- **Azure DevOps:** org `codewithelmor`, project `Demo-API` (new, Agile process; chosen 2026-10-27). MCP servers `ado-read` / `ado-write` added to this repo's local scope 2026-10-27. Board created 2026-10-27: 168 work items ([azdo-map.md](azdo-map.md)), https://dev.azure.com/codewithelmor/Demo-API/_boards/board/t/Demo-API%20Team/Stories
 - **Figma files:** not used (API-only product)
 
 ## Phase status
@@ -73,6 +73,7 @@ Planned order: Concept → Requirements → Architecture → Security → Qualit
 | 2026-10-27 | Architecture review R-1..R-5: DB breaker is connection-level only; S1 split into S1a walking skeleton + S1b auth; `ITransactionRunner` in SharedKernel with `ChangeTracker.Clear()` per attempt and reuse revocation committed before 401; cuts (replay list, advisory lock, prodlike compose, extra S1 indexes, build-time OpenAPI export; Postman generated from OpenAPI); strip CI job at end of S2 | Devil's advocate review, verdict go with changes | [architecture-review.md](04-architecture/architecture-review.md) |
 | 2026-10-27 | Security decisions S-D1..S-D8: per-request security-stamp check (R1); auto-lockout keeps sessions, change password on auth-strict; reset 1 h / confirm 24 h; 5 open Pending orders cap; all Admins read audit logs; strict refresh; equal-work + time floor against enumeration; localhost-only compose, Valkey password; supply-chain gates and Renovate; ADR 0014 | STRIDE threat model by security-privacy-reviewer | [threat model §9](05-security/threat-model.md) |
 | 2026-10-27 | Quality decisions Q-D1..Q-D6: test pyramid (~200 unit, ~350 integration/API, ~40 serial, ~20 architecture rules); generated authz matrix from `EndpointDataSource`; tokens minted for non-auth tests; no CI retries, max 3 quarantined; coverage as warning; NFR-02 recorded, NFR-01 blocks; branch policy on `main`; k6 twice (end S1b, after S4) | Test strategy by qa-strategist | [test strategy §10](07-quality/test-strategy.md) |
+| 2026-10-27 | Azure DevOps org `codewithelmor`, new project `Demo-API`; board first, then S1a build | Product owner choice ("Both, board first") | |
 | 2026-10-27 | Delivery decisions DL-D1..DL-D6: Kanban, WIP 1; time-boxes S1a 16-18, S1b 24-28, S2 17-20, S3 13-15, S4 7-8, template + rel/ops 6-9 days (83-98 total); Agile process, Epic per slice, no iterations; Azure Repos; 168-item preview | delivery-planner | [delivery plan §9](06-delivery/delivery-plan.md) |
 
 ## Open-question answers (section 9 of the brief)
@@ -114,4 +115,5 @@ Planned order: Concept → Requirements → Architecture → Security → Qualit
 - Section 9 answers were chosen by Claude on the product owner's instruction ("use whichever is best"); the product owner may override any of them.
 
 ## Next step
+Board done (168 items). Start S1a with `build-app-builder` (E1, work item #1); commits use `AB#<id>`. Earlier plan text below.
 `azdo-boards-manager`: run `azdo-setup` (Agile, area paths, columns, bug setting; needs the Azure DevOps org and project name) and show the 168-item preview from delivery-plan §5; create items only after approval. Then Release/Operations light. Push stories to Azure DevOps Boards after Delivery planning (`azdo-setup` first).

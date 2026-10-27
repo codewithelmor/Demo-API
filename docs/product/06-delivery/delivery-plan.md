@@ -266,7 +266,7 @@ F12 (no CI) is closed by P-009 to P-011 and replaced by D1.
 
 **Recommendation: Epic per slice.** Areas go in **area paths**:
 
-`Orders API\Platform`, `\Auth`, `\AdminUsers`, `\Products`, `\Customers`, `\Orders`, `\Reports`, `\Template`, `\Delivery`.
+`Demo-API\Platform`, `\Auth`, `\AdminUsers`, `\Products`, `\Customers`, `\Orders`, `\Reports`, `\Template`, `\Delivery`.
 
 Platform, Auth, AdminUsers and Products are the parts the template keeps, so a query by area shows what the template inherits.
 
@@ -317,18 +317,18 @@ Separate tags with `;`. Assumption: hyphens are fine in Azure DevOps tags; `azdo
 
 ### Complete item list
 
-Sizes: XS = 1, S = 2, M = 4, L = 8 Story Points. The `Orders API` area root is shortened to the leaf name.
+Sizes: XS = 1, S = 2, M = 4, L = 8 Story Points. The `Demo-API` area root is shortened to the leaf name.
 
 | ID | Type | Title | Parent | Area | Tags | Slice | Size | Source |
 |---|---|---|---|---|---|---|---|---|
-| E1 | Epic | S1a Walking skeleton | – | Orders API | S1a | S1a | – | SS §14; TS §6 |
-| E2 | Epic | S1b Auth and product CRUD | – | Orders API | S1b | S1b | – | SS §14; TS §6 |
-| E3 | Epic | S2 Customers, own-data rules and user admin | – | Orders API | S2 | S2 | – | PRD §5; TS §6 |
-| E4 | Epic | S3 Orders, stock and statuses | – | Orders API | S3 | S3 | – | PRD §5; TS §6 |
-| E5 | Epic | S4 Reports and Dapper reads | – | Orders API | S4 | S4 | – | PRD §5; TS §6 |
+| E1 | Epic | S1a Walking skeleton | – | Demo-API | S1a | S1a | – | SS §14; TS §6 |
+| E2 | Epic | S1b Auth and product CRUD | – | Demo-API | S1b | S1b | – | SS §14; TS §6 |
+| E3 | Epic | S2 Customers, own-data rules and user admin | – | Demo-API | S2 | S2 | – | PRD §5; TS §6 |
+| E4 | Epic | S3 Orders, stock and statuses | – | Demo-API | S3 | S3 | – | PRD §5; TS §6 |
+| E5 | Epic | S4 Reports and Dapper reads | – | Demo-API | S4 | S4 | – | PRD §5; TS §6 |
 | E6 | Epic | Template extraction (P7) | – | Template | Template | Template | – | PRD §17 P7; SS §13 |
 | E7 | Epic | Release and operations (light) | – | Delivery | RelOps | RelOps | – | 00-summary phases 10-11 |
-| E8 | Epic | Stretch (cut first) | – | Orders API | Stretch; stretch | Stretch | – | PRD §5 |
+| E8 | Epic | Stretch (cut first) | – | Demo-API | Stretch; stretch | Stretch | – | PRD §5 |
 | F1.1 | Feature | Repo, solution and local run | E1 | Platform | S1a | S1a | – | SS §2-3, §10 |
 | F1.2 | Feature | CI pipeline and supply-chain gates | E1 | Platform | S1a; ci | S1a | – | SS §11; TM §5 |
 | F1.3 | Feature | Test and architecture foundations | E1 | Platform | S1a; test-infra | S1a | – | TS §2-3; SS §8-9 |
@@ -353,7 +353,7 @@ Sizes: XS = 1, S = 2, M = 4, L = 8 Story Points. The `Orders API` area root is s
 | F5.2 | Feature | Final quality gates | E5 | Platform | S4 | S4 | – | TS §5-6 |
 | F6.1 | Feature | dotnet new template and start guide | E6 | Template | Template; template | Template | – | SS §13 |
 | F7.1 | Feature | Release and operations notes | E7 | Delivery | RelOps | RelOps | – | TM §7.2 |
-| F8.1 | Feature | Stretch stories (cut first) | E8 | Orders API | Stretch; stretch | Stretch | – | PRD §5 |
+| F8.1 | Feature | Stretch stories (cut first) | E8 | Demo-API | Stretch; stretch | Stretch | – | PRD §5 |
 | P-001 | User Story | Enabler: Solution skeleton and root files (slnx, global.json, Directory.*.props, nuget.config source mapping, BannedSymbols, .gitattributes); verify flagged package versions | F1.1 | Platform | S1a; enabler | S1a | M | SS §2-3 |
 | P-002 | User Story | Enabler: Compose chain secrets-init → postgres → migrator → api, Dockerfile api and migrator targets | F1.1 | Platform | S1a; enabler | S1a | M | SS §10; ADR-0012 |
 | P-003 | User Story | Security follow-up: Compose hardening (localhost-only ports, Valkey ACL password, per-service secret mounts 0440, generated POSTGRES_PASSWORD, log rotation, dp-keys volume) | F1.1 | Platform | S1a; security-followup | S1a | S | TM Follow-up actions, §3 items 2-3 |
