@@ -31,6 +31,8 @@ This log lists which Claude Code agents and skills produced each planning docume
 | 2026-10-24 to 2026-10-27 | `/rate-limit-options` | Run by the user during the session (not an agent call) |
 | 2026-10-27 | `claude mcp add` (CLI, not an agent) | Added `ado-read` and `ado-write` (`@azure-devops/mcp`, org `codewithelmor`) to the Demo-API local scope so `azdo-boards-manager` can reach Azure DevOps. Switched to `-a pat` because browser sign-in rejects personal Microsoft accounts; both servers start through `~/.claude/scripts/ado-mcp.ps1`, which reads the token from the `PERSONAL_ACCESS_TOKEN` user environment variable (never stored in config). Token verified; project `Demo-API` not created yet |
 | 2026-10-27 | `/commit` (skill) | First commit of the planning docs (`ef1029b`, on `master`) after the user confirmed the message |
+| 2026-10-27 | `/commit` (skill) | Committed the Azure DevOps board docs (`8b997a8`, on `master`) after the user confirmed the message |
+| 2026-10-27 | `/init` (skill) | Created `CLAUDE.md` at the repo root from the approved plan (state, doc map, stack, planned commands, architecture and data rules, DoD, workflow) |
 
 
 
