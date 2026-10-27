@@ -3,7 +3,7 @@ obj/
 .vs/
 .vscode/
 .idea/
-*.user
+# *.user
 *.suo
 TestResults/
 coverage*/
@@ -13,8 +13,8 @@ compose.override.yaml
 *.pfx
 appsettings.*.local.json
 secrets/
-api-tests/http/http-client.env.json.user
-api-tests/http/http-client.private.env.json
+# api-tests/http/http-client.env.json.user
+# api-tests/http/http-client.private.env.json
 artifacts/
 
 .claude/settings.local.json

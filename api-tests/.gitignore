@@ -1,10 +1,10 @@
 # Personal and secret values for .http files (Visual Studio, httpyac, JetBrains)
-http-client.env.json.user
-http-client.private.env.json
-*.private.env.json
-.env
-.env.*
-!*.example
+# http-client.env.json.user
+# http-client.private.env.json
+# *.private.env.json
+# .env
+# .env.*
+# !*.example
 
 # Reports and logs from local and CI runs
 reports/
