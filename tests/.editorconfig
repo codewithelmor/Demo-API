@@ -1,0 +1,29 @@
+# Test projects only: test naming and xUnit conventions.
+[*.cs]
+# Test method names use underscores (test-strategy section 7).
+dotnet_diagnostic.CA1707.severity = none
+# xUnit test classes must be public.
+dotnet_diagnostic.CA1515.severity = none
+# No synchronization context in tests.
+dotnet_diagnostic.CA2007.severity = none
+# Test SQL is constant text.
+dotnet_diagnostic.CA2100.severity = none
+# Literals in assertions are fine.
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1303.severity = none
+# Fixtures own their disposables through IAsyncLifetime.
+dotnet_diagnostic.CA1001.severity = none
+dotnet_diagnostic.CA2000.severity = none
+# Random is used for test data only.
+dotnet_diagnostic.CA5394.severity = none
+# Tests use string URIs for HttpClient.
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA1054.severity = none
+dotnet_diagnostic.CA1056.severity = none
+# Builders and fixtures are not localized.
+dotnet_diagnostic.CA1304.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1307.severity = none
+dotnet_diagnostic.CA1309.severity = none
+dotnet_diagnostic.CA1310.severity = none
+dotnet_diagnostic.CA1311.severity = none

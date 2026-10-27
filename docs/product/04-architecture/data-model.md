@@ -161,7 +161,7 @@ Columns marked **PII** are personal data: marked once with `[PersonalData]` (or 
 | user_name / normalized_user_name | varchar(256) | Yes (Identity) | | **PII**. `user_name` = email. |
 | email / normalized_email | varchar(256) | Yes (Identity) | | **PII**. D5 ≤ 256. Single source of a customer's email (not copied to `customers`). |
 | email_confirmed | boolean | No | false | |
-| password_hash | text | Yes | | Never audited. Set to NULL on erase. NULL for Admin-created users until reset (FR-037, FR-060). |
+| password_hash | text | Yes | | Value never audited; a change is recorded as `"changed"` (EP-09 needs an Update row). Set to NULL on erase. NULL for Admin-created users until reset (FR-037, FR-060). |
 | security_stamp, concurrency_stamp | text | Yes | | Never audited. Stamp rotated on password, role, lock, erase. |
 | phone_number, phone_number_confirmed, two_factor_enabled | Identity | | | Unused (customer phone lives on `customers`). `phone_number` is still marked **PII**. |
 | lockout_end | timestamptz | Yes | | Admin lock with no end = `DateTimeOffset.MaxValue` (Assumption: Npgsql maps it to `infinity`; verify in the S2 spike). |

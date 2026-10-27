@@ -1,0 +1,515 @@
+# Orders, Admin routes (EP-38..EP-43). Catalog section 7. All AdminOnly: a Customer gets 403 on every
+# /orders route (customers use /customers/me/orders, see my-orders/my-orders.http).
+# Stretch EP-44 (delete order) and the Idempotency-Key header are not built and not covered.
+# Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1. Run top to bottom.
+# Visual Studio: send loginAdmin, loginCustomerA, meCustomerA, createProduct, createOrder and getOrder first.
+# Flow: product (stock 100) -> order 1 Pending -> replace items (If-Match) -> Confirmed -> Shipped -> Completed;
+# order 2 Pending -> cancel. No order is left Pending (the cap is 5 open Pending orders per customer).
+# Cleanup: the product is soft deleted at the end; completed and cancelled orders stay (rows are never deleted).
+
+### POST Auth - Login Admin
+# @name loginAdmin
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### POST Auth - Login Customer A
+# @name loginCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### GET Auth - Me as Customer A (customer ID for the order)
+# @name meCustomerA
+# @expect 200
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Products - Setup for orders (EP-24)
+# @name createProduct
+# @expect 201
+POST {{baseUrl}}/api/v1/products
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Test order product {{$randomInt 1000 9999}}",
+  "sku": "T-{{$randomInt 100000 999999}}",
+  "price": 12.50,
+  "stockQuantity": 100
+}
+
+### POST Orders - Valid (EP-38)
+# 201 OrderResponse with Location /api/v1/orders/{id} and ETag. Status Pending, stock reserved.
+# @name createOrder
+# @expect 201
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 2 }
+  ]
+}
+
+### GET Orders - By id (EP-40)
+# Items, history and allowedNextStatuses, plus ETag.
+# @name getOrder
+# @expect 200
+GET {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - By id from Location (EP-40)
+# @expect 200
+GET {{baseUrl}}{{createOrder.response.headers.Location}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - By id as Customer (EP-40)
+# ID routes are Admin only: 403, even for the customer's own order.
+# @expect 403
+GET {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Orders - By id without token (EP-40)
+# @expect 401
+GET {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}
+
+### GET Orders - Unknown id (EP-40)
+# @expect 404
+GET {{baseUrl}}/api/v1/orders/{{$guid}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - Malformed id (EP-40)
+# @expect 400
+GET {{baseUrl}}/api/v1/orders/not-a-guid
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - List (EP-39)
+# @expect 200
+GET {{baseUrl}}/api/v1/orders?page=1&pageSize=20&sort=-createdAt
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - List with filters (EP-39)
+# status is repeatable.
+# @expect 200
+GET {{baseUrl}}/api/v1/orders?status=Pending&status=Confirmed&customerId={{meCustomerA.response.body.$.customerId}}&createdFrom=2026-01-01T00:00:00Z&minTotal=0&maxTotal=1000
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - List invalid status and sort (EP-39)
+# @expect 400
+GET {{baseUrl}}/api/v1/orders?status=Lost&sort=customerName
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - List minTotal above maxTotal (EP-39)
+# @expect 400
+GET {{baseUrl}}/api/v1/orders?minTotal=100&maxTotal=1
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Orders - List as Customer (EP-39)
+# @expect 403
+GET {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Orders - List without token (EP-39)
+# @expect 401
+GET {{baseUrl}}/api/v1/orders
+
+### POST Orders - Insufficient stock (EP-38)
+# 409 insufficient-stock with productIds (stock is 100, minus 2 reserved).
+# @expect 409
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1000 }
+  ]
+}
+
+### POST Orders - Unknown product (EP-38)
+# 400 errors.items[0].productId (reference check).
+# @expect 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{$guid}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - Unknown customer (EP-38)
+# 400 errors.customerId.
+# @expect 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{$guid}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - Invalid items (EP-38)
+# 400: no items.
+# @expect 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": []
+}
+
+### POST Orders - Duplicate product and quantity zero (EP-38)
+# 400: each product at most once; quantity 1-1000.
+# @expect 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 0 },
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - As Customer (EP-38)
+# @expect 403
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - Without token (EP-38)
+# @expect 401
+POST {{baseUrl}}/api/v1/orders
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### DELETE Customers - Customer with an open order (EP-33)
+# 409 customer-has-open-orders: Customer A has a Pending order. Nothing is deleted.
+# @expect 409
+DELETE {{baseUrl}}/api/v1/customers/{{meCustomerA.response.body.$.customerId}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Orders - Replace items with If-Match (EP-41)
+# @name replaceItems
+# @expect 200
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{getOrder.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 3 }
+  ]
+}
+
+### PUT Orders - Replace items missing If-Match (EP-41)
+# @expect 428
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### PUT Orders - Replace items stale ETag (EP-41)
+# @expect 412
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{getOrder.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### PUT Orders - Replace items insufficient stock (EP-41)
+# @expect 409
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{replaceItems.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1000 }
+  ]
+}
+
+### PUT Orders - Replace items unknown product (EP-41)
+# 400 reference check, after If-Match.
+# @expect 400
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{replaceItems.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{$guid}}", "quantity": 1 }
+  ]
+}
+
+### PUT Orders - Replace items unknown order (EP-41)
+# @expect 404
+PUT {{baseUrl}}/api/v1/orders/{{$guid}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{replaceItems.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### PUT Orders - Replace items as Customer (EP-41)
+# @expect 403
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: {{replaceItems.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### PUT Orders - Replace items without token (EP-41)
+# @expect 401
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - Status to Cancelled (EP-42)
+# 409 invalid-status-transition; the detail points to the cancel endpoint.
+# @expect 409
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Cancelled"
+}
+
+### POST Orders - Status invalid value (EP-42)
+# @expect 400
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Lost"
+}
+
+### POST Orders - Status missing (EP-42)
+# @expect 400
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{}
+
+### POST Orders - Status as Customer (EP-42)
+# @expect 403
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Confirmed"
+}
+
+### POST Orders - Status without token (EP-42)
+# @expect 401
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Content-Type: application/json
+
+{
+  "status": "Confirmed"
+}
+
+### POST Orders - Status unknown order (EP-42)
+# @expect 404
+POST {{baseUrl}}/api/v1/orders/{{$guid}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Confirmed"
+}
+
+### POST Orders - Status Pending to Confirmed (EP-42)
+# @expect 204
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Confirmed",
+  "reason": "API test"
+}
+
+### GET Orders - After confirm (EP-40)
+# @name getConfirmedOrder
+# @expect 200
+GET {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Orders - Replace items when not Pending (EP-41)
+# 409 invalid-order-state (current ETag, so the If-Match check passes).
+# @expect 409
+PUT {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/items
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{getConfirmedOrder.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - Status back to Pending (EP-42)
+# @expect 409
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Pending"
+}
+
+### POST Orders - Status Confirmed to Shipped (EP-42)
+# @expect 204
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Shipped"
+}
+
+### POST Orders - Cancel a Shipped order (EP-43)
+# 409 invalid-status-transition (only Pending or Confirmed).
+# @expect 409
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/cancel
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Orders - Status Shipped to Completed (EP-42)
+# @expect 204
+POST {{baseUrl}}/api/v1/orders/{{createOrder.response.body.$.id}}/status
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Completed"
+}
+
+### POST Orders - Second order to cancel (EP-38)
+# @name createOrderToCancel
+# @expect 201
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{meCustomerA.response.body.$.customerId}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Orders - Cancel as Customer (EP-43)
+# @expect 403
+POST {{baseUrl}}/api/v1/orders/{{createOrderToCancel.response.body.$.id}}/cancel
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Orders - Cancel without token (EP-43)
+# @expect 401
+POST {{baseUrl}}/api/v1/orders/{{createOrderToCancel.response.body.$.id}}/cancel
+
+### POST Orders - Cancel unknown order (EP-43)
+# @expect 404
+POST {{baseUrl}}/api/v1/orders/{{$guid}}/cancel
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Orders - Cancel reason too long (EP-43)
+# @expect 400
+POST {{baseUrl}}/api/v1/orders/{{createOrderToCancel.response.body.$.id}}/cancel
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
+
+### POST Orders - Cancel with a reason (EP-43)
+# Pending to Cancelled; stock is returned. The body is optional.
+# @expect 204
+POST {{baseUrl}}/api/v1/orders/{{createOrderToCancel.response.body.$.id}}/cancel
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "API test cleanup"
+}
+
+### POST Orders - Cancel again without a body (EP-43)
+# Already Cancelled: 409 invalid-status-transition.
+# @expect 409
+POST {{baseUrl}}/api/v1/orders/{{createOrderToCancel.response.body.$.id}}/cancel
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Products - Cleanup (EP-26)
+# @expect 204
+DELETE {{baseUrl}}/api/v1/products/{{createProduct.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

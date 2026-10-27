@@ -34,6 +34,9 @@ This log lists which Claude Code agents and skills produced each planning docume
 | 2026-10-27 | `/commit` (skill) | Committed the Azure DevOps board docs (`8b997a8`, on `master`) after the user confirmed the message |
 | 2026-10-27 | `/init` (skill) | Created `CLAUDE.md` at the repo root from the approved plan (state, doc map, stack, planned commands, architecture and data rules, DoD, workflow) |
 | 2026-10-27 | `/commit` (skill) | Committed `CLAUDE.md` and the notes update (`c4aed47`, on `master`) after the user confirmed the message |
+| 2026-10-27 | `/commit` (skill) | Committed the Azure DevOps MCP helper scripts (`62eaad4`) and the notes log row (`078ba00`), on `master`, after the user confirmed |
+| 2026-10-27 | "Create the app based from the Azure DevOps Boards and documentations…" (user prompt) | Build S1a-S4 on branch `feature/build-orders-api`, then update the board. Mid-build the user asked to use the existing agents and skills; remaining work was handed to agents #22 onward |
+| 2026-10-27 | `/move-usings-to-global` (skill) | Previewed, then applied: `GlobalUsings.cs` in all 9 projects (71 files updated, Migrations skipped). Backup of `src/` and `tests/` kept in the session scratchpad. Needed manual fixes for name clashes: global aliases for `ProblemDetails`, `ValidationContext`, `ValidationResult`, `ValidationFailure`, `PersonalDataAttribute` (BuildingBlocks), `Type` (architecture tests), `ValidationResult` (unit tests), and `ArchUnitNET.Domain` kept local to `ArchitectureModel.cs`. Build 0 warnings, 396 tests pass, format clean |
 
 
 
@@ -80,7 +83,26 @@ This log lists which Claude Code agents and skills produced each planning docume
 | 20 | 2026-10-27 | 8 Delivery (tracker) | `azdo-boards-manager` (apply, resumed) | as #19 | ado-read (checks); ado-write `wit_work_item_write` denied by auto-mode permission check | Setup S-1..S-5 verified, 0 duplicates; first create blocked, nothing created. [azdo-map.md](azdo-map.md) skeleton; "Applied status" added to [azdo-preview.md](06-delivery/azdo-preview.md) |
 | 21 | 2026-10-27 | 8 Delivery (tracker) | main session (no agent; `azdo-boards-manager` APPLY was blocked) | – | ado-write `wit_work_item_write` (E1), then a REST script with the same PAT | 168 work items + 160 parent and 31 dependency links created and verified; [azdo-map.md](azdo-map.md) |
 
+| 22 | 2026-10-27 | Build S1-S4 | `dotnet-api-designer` | – | Read, Write, Edit, Bash | Done: 37 endpoints (EP-22..57 minus stretch) in `src/DemoApi.Api/Features/**`; Release build 0 warnings |
+
+| 23 | 2026-10-27 | Build S1-S4 | `dotnet-devops-engineer` | – | Read, Write, Edit, Bash (docker) | Done: `deploy/docker/Dockerfile` (chiseled, non-root api + EF bundle migrator), `compose.yaml` (per-service secret folders, Valkey ACL), `azure-pipelines.yml` (build, format, vulnerable packages, tests, gitleaks); `global.json` test runner = MTP. `.env.example` blocked by the guard-secrets hook (not worked around). Main session then fixed the missing `AddRateLimiter()` and smoke-tested `docker compose up -d` |
+
+| 24 | 2026-10-27 | Build S1-S4 | `dotnet-test-engineer` | – | Read, Write, Edit, Bash (dotnet test, Docker/Testcontainers) | Done: 217 unit + 45 architecture + 134 integration tests (~20 s). Fixed 3 production bugs (order writes 500 on missing xmin, customer update not saved, deleted customers listed) + product PUT body/ETag. Main session then fixed EP-43/48 no-body 415 (`*/*` accepted) and EP-09 audit row (`passwordHash: "changed"`, data-model updated) |
+
+| 25 | 2026-10-27 | Build S1-S4 | `api-collection-engineer` | – | Read, Write, Edit | Done: 10 `.http` files (319 requests, all 51 built EPs, 401/403/BOLA/400/428/412/409 cases), env + setup/run scripts, `api-tests/openapi/v1.json` (exported with a scratch rate-limiter workaround; to re-export). Not yet run against the live API; OpenAPI lacks most error codes and 201/202; Postman deferred |
+
+| 26 | 2026-10-27 | Build S1-S4 | `dotnet-code-reviewer` | – | Read, Grep, Bash | Fresh-context review of the whole working tree (DoD) |
+
+| 27 | 2026-10-27 | Build S1-S4 | `dotnet-security-reviewer` | – | Read, Grep, Bash | Fresh-context security review (auth, tokens, personal data; DoD) |
+
+| 28 | 2026-10-27 | Build S1-S4 | `azdo-boards-manager` (preview, then apply) | – | ado-read, ado-write | Board update after the `.http` run (9 files, 0 failures). Applied after user approval: Epics #1-#5, 37 Tier A stories and enablers #34/#35/#45/#46/#85 set to Active (47 items, WIP override accepted); 11 status comments; created Bug #169, User Story #170, Tasks #171 and #172; links done. Nothing Closed (no merge, review findings pending) |
+
+| 29 | 2026-10-27 | Build S1-S4 | `dotnet-code-reviewer` (re-run) | – | Read, Grep, Bash | Fresh-context review of the working tree; the report from #26 was not saved. Output: `07-quality/code-review-2026-10-27.md` |
+| 30 | 2026-10-27 | Build S1-S4 | `dotnet-security-reviewer` (re-run) | – | Read, Grep, Bash | Fresh-context security review; the report from #27 was not saved. Output: `07-quality/security-review-2026-10-27.md` |
+
 Notes:
+
+- A session usage limit stopped agents #23-#25 mid-task on 2026-10-27; they were resumed with SendMessage, not restarted.
 
 - Usage limits stopped agents #8-#11 twice (a session limit, then the weekly limit). They were resumed, not restarted.
 

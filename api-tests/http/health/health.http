@@ -1,0 +1,25 @@
+# Health probes (EP-56, EP-57). Anonymous, no route prefix, not rate limited. Read-only.
+# OpenAPI: api-tests/openapi/v1.json. Catalog: docs/product/04-architecture/endpoint-catalog.md section 9.
+#   npx --yes httpyac@6.16.7 send health/health.http --all -e local   (from api-tests/http)
+
+### GET Health - Live (EP-56)
+# @expect 200
+GET {{baseUrl}}/health/live
+Accept: application/json
+
+### GET Health - Live ignores an invalid bearer token (EP-56)
+# Probes must never return 401, even with a bad token (a random GUID is not a JWT).
+# @expect 200
+GET {{baseUrl}}/health/live
+Authorization: Bearer {{$guid}}
+
+### GET Health - Ready (EP-57)
+# 200 Healthy, 200 Degraded (Valkey down). 503 means PostgreSQL is down.
+# @expect 200
+GET {{baseUrl}}/health/ready
+Accept: application/json
+
+### GET Health - Ready ignores an invalid bearer token (EP-57)
+# @expect 200
+GET {{baseUrl}}/health/ready
+Authorization: Bearer {{$guid}}

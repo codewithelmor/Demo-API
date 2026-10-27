@@ -1,0 +1,12 @@
+# Copy to compose.override.yaml (git-ignored) to reach PostgreSQL and Valkey from local tools.
+# Ports bind to 127.0.0.1 only (ADR-0012). Credentials (users demoapi_migrator / demoapi_app / demoapi):
+#   docker compose run --rm --no-deps --entrypoint cat secrets-init /secrets/.generated/migrator_password
+#   (or app_password, valkey_password)
+#
+# services:
+#   postgres:
+#     ports:
+#       - "127.0.0.1:5432:5432"
+#   valkey:
+#     ports:
+#       - "127.0.0.1:6379:6379"

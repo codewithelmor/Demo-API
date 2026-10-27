@@ -1,0 +1,304 @@
+# Customers, Admin routes (EP-29..EP-33). Catalog section 6. All AdminOnly: a Customer gets 403 on ID routes
+# (customers use /customers/me, see customers-me/customers-me.http). Stretch EP-34 (restore) is not built.
+# Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1. Run top to bottom.
+# Visual Studio: send loginAdmin, loginCustomerA, createCustomer and getCustomer first.
+# Flow: create, read, list, update (If-Match), negative cases, delete (soft delete and anonymize) as cleanup.
+
+### POST Auth - Login Admin
+# @name loginAdmin
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### POST Auth - Login Customer A
+# @name loginCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### POST Customers - Valid (EP-29)
+# 201 with Location /api/v1/customers/{id} and ETag. Creates a user with no password (reset link in the api log).
+# @name createCustomer
+# @expect 201
+POST {{baseUrl}}/api/v1/customers
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "customer.api-test.{{$randomInt 100000 999999}}@example.com",
+  "firstName": "Test",
+  "lastName": "Customer {{$randomInt 1000 9999}}",
+  "phone": "+12025550142"
+}
+
+### GET Customers - By id (EP-31)
+# @name getCustomer
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - By id from Location (EP-31)
+# @expect 200
+GET {{baseUrl}}{{createCustomer.response.headers.Location}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Customers - Duplicate email (EP-29)
+# 409 duplicate-email.
+# @expect 409
+POST {{baseUrl}}/api/v1/customers
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "{{createCustomer.response.body.$.email}}",
+  "firstName": "Test",
+  "lastName": "Duplicate"
+}
+
+### POST Customers - Invalid fields (EP-29)
+# 400: errors.email, errors.firstName, errors.phone (E.164).
+# @expect 400
+POST {{baseUrl}}/api/v1/customers
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "firstName": "",
+  "lastName": "Customer",
+  "phone": "202-555-0142"
+}
+
+### POST Customers - As Customer (EP-29)
+# @expect 403
+POST {{baseUrl}}/api/v1/customers
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "customer.api-test.{{$randomInt 100000 999999}}@example.com",
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### POST Customers - Without token (EP-29)
+# @expect 401
+POST {{baseUrl}}/api/v1/customers
+Content-Type: application/json
+
+{
+  "email": "customer.api-test.{{$randomInt 100000 999999}}@example.com",
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### GET Customers - List (EP-30)
+# @expect 200
+GET {{baseUrl}}/api/v1/customers?page=1&pageSize=20&sort=lastName
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - List with filters (EP-30)
+# @expect 200
+GET {{baseUrl}}/api/v1/customers?search=api-test&createdFrom=2026-01-01T00:00:00Z&createdTo=2099-01-01T00:00:00Z&sort=-createdAt
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - List date without offset (EP-30)
+# 400 errors.createdFrom (D8: dates need Z or an offset).
+# @expect 400
+GET {{baseUrl}}/api/v1/customers?createdFrom=2026-01-01T00:00:00
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - List createdFrom after createdTo (EP-30)
+# @expect 400
+GET {{baseUrl}}/api/v1/customers?createdFrom=2026-06-01T00:00:00Z&createdTo=2026-01-01T00:00:00Z
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - List as Customer (EP-30)
+# @expect 403
+GET {{baseUrl}}/api/v1/customers
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers - List without token (EP-30)
+# @expect 401
+GET {{baseUrl}}/api/v1/customers
+
+### GET Customers - By id as Customer (EP-31)
+# ID routes are Admin only: 403, never the record.
+# @expect 403
+GET {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers - By id without token (EP-31)
+# @expect 401
+GET {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+
+### GET Customers - Unknown id (EP-31)
+# @expect 404
+GET {{baseUrl}}/api/v1/customers/{{$guid}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - Malformed id (EP-31)
+# @expect 400
+GET {{baseUrl}}/api/v1/customers/not-a-guid
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Customers - Valid with If-Match (EP-32)
+# Replaces first name, last name and phone (null clears). Email absent: ignored.
+# @name updateCustomer
+# @expect 200
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{getCustomer.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer updated",
+  "phone": null
+}
+
+### PUT Customers - Missing If-Match (EP-32)
+# @expect 428
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### PUT Customers - Stale ETag (EP-32)
+# @expect 412
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{getCustomer.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### PUT Customers - Same email is ignored (EP-32)
+# GET-modify-PUT clients send the current email back: 200.
+# @name updateCustomerSameEmail
+# @expect 200
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{updateCustomer.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer updated",
+  "phone": "+12025550143",
+  "email": "{{createCustomer.response.body.$.email}}"
+}
+
+### PUT Customers - Different email (EP-32)
+# 409 email-change-not-allowed (D14).
+# @expect 409
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{updateCustomerSameEmail.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer updated",
+  "email": "changed.api-test.{{$randomInt 100000 999999}}@example.com"
+}
+
+### PUT Customers - Invalid fields (EP-32)
+# @expect 400
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{updateCustomerSameEmail.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": "Customer",
+  "phone": "12345"
+}
+
+### PUT Customers - Unknown id (EP-32)
+# @expect 404
+PUT {{baseUrl}}/api/v1/customers/{{$guid}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{updateCustomerSameEmail.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### PUT Customers - As Customer (EP-32)
+# @expect 403
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: {{updateCustomerSameEmail.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### PUT Customers - Without token (EP-32)
+# @expect 401
+PUT {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### DELETE Customers - As Customer (EP-33)
+# @expect 403
+DELETE {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### DELETE Customers - Without token (EP-33)
+# @expect 401
+DELETE {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+
+### DELETE Customers - Unknown id (EP-33)
+# @expect 404
+DELETE {{baseUrl}}/api/v1/customers/{{$guid}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Customers - Cleanup (EP-33)
+# Soft delete and anonymize. 409 customer-has-open-orders is covered in orders/orders.http.
+# @expect 204
+DELETE {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - Deleted (EP-31)
+# @expect 404
+GET {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers - Deleted with includeDeleted (EP-31)
+# 200, anonymized, isDeleted true (C10).
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}?includeDeleted=true
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Customers - Already deleted (EP-33)
+# @expect 404
+DELETE {{baseUrl}}/api/v1/customers/{{createCustomer.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

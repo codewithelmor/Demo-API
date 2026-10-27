@@ -210,3 +210,11 @@ Team settings verified 2026-10-27: Epics backlog visible, bugs managed with requ
 | P-133 — US-206 Admin soft deletes a Cancelled order | User Story | 166 | [#166](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/166) | 33 | yes | 2026-10-27 |
 | P-134 — US-211 Customer edits items of an own Pending order | User Story | 167 | [#167](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/167) | 33 | yes | 2026-10-27 |
 | P-135 — Idempotency-Key on order create (no user story exists) | User Story | 168 | [#168](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/168) | 33 | yes | 2026-10-27 |
+| Bug: OpenAPI missing error response codes and 201/202 (post-build gap) | Bug | 169 | [#169](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/169) | 11 | yes | 2026-10-27 |
+| Review: triage code-review and security-review findings (post-build gap) | User Story | 170 | [#170](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/170) | 17 | yes | 2026-10-27 |
+| Task: generate Postman collection from corrected OpenAPI (predecessor: #169) | Task | 171 | [#171](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/171) | 85 | yes | 2026-10-27 |
+| Task: run destructive .http file (customer-c-lifecycle.http) | Task | 172 | [#172](https://dev.azure.com/codewithelmor/Demo-API/_workitems/edit/172) | 85 | yes | 2026-10-27 |
+
+## Board state after build sync (2026-10-27)
+
+Active (47): Epics #1-#5; enablers #34, #35, #45, #46, #85; Tier A stories #53-#56, #66, #67, #69-#72, #74-#78, #101, #110, #111, #113, #114, #117, #118, #129, #130, #132-#138, #144-#149. Evidence: endpoint built, tagged integration test, `.http` run passed. Not Closed: no merge, CI on `main` or review sign-off yet. Tier B (built, no tagged integration test found, left New): #68, #73, #100, #102-#109, #112, #116, #131. Comments added to #1-#5, #34, #35, #45, #46, #47, #85, #87.

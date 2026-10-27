@@ -1,0 +1,273 @@
+# My orders (EP-45..EP-48). Catalog section 7. CustomerOnly: the customer ID comes from the token only.
+# BOLA (ST-02): Customer B asks for Customer A's order and gets 404, the same as an unknown ID.
+# Stretch EP-49 (replace my items) and the Idempotency-Key header are not built and not covered.
+# Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1. Run top to bottom.
+# Visual Studio: send loginAdmin, loginCustomerA, loginCustomerB, createProduct and placeMyOrder first.
+# Cleanup: both orders are cancelled (no Pending order is left) and the product is soft deleted.
+
+### POST Auth - Login Admin
+# @name loginAdmin
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### POST Auth - Login Customer A
+# @name loginCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### POST Auth - Login Customer B
+# @name loginCustomerB
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerBEmail}}",
+  "password": "{{customerBPassword}}"
+}
+
+### POST Products - Setup for my orders (EP-24)
+# @name createProduct
+# @expect 201
+POST {{baseUrl}}/api/v1/products
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Test my-order product {{$randomInt 1000 9999}}",
+  "sku": "T-{{$randomInt 100000 999999}}",
+  "price": 7.25,
+  "stockQuantity": 50
+}
+
+### POST Customers me orders - Valid (EP-45)
+# 201 MyOrderResponse with Location /api/v1/customers/me/orders/{id} and ETag.
+# @name placeMyOrder
+# @expect 201
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 2 }
+  ]
+}
+
+### GET Customers me orders - By id (EP-47)
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - By id from Location (EP-47)
+# @expect 200
+GET {{baseUrl}}{{placeMyOrder.response.headers.Location}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - Other customer's order (EP-47, BOLA)
+# Customer B reads Customer A's order: 404 with the same body as an unknown ID, never the order.
+# @expect 404
+GET {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}
+Authorization: Bearer {{loginCustomerB.response.body.$.accessToken}}
+
+### GET Customers me orders - Unknown id (EP-47)
+# @expect 404
+GET {{baseUrl}}/api/v1/customers/me/orders/{{$guid}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - Malformed id (EP-47)
+# @expect 400
+GET {{baseUrl}}/api/v1/customers/me/orders/not-a-guid
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - By id as Admin (EP-47)
+# @expect 403
+GET {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers me orders - By id without token (EP-47)
+# @expect 401
+GET {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}
+
+### GET Customers me orders - List (EP-46)
+# Only the caller's orders.
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me/orders?page=1&pageSize=20&sort=-createdAt
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - List with filters (EP-46)
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me/orders?status=Pending&status=Cancelled&createdFrom=2026-01-01T00:00:00Z&createdTo=2099-01-01T00:00:00Z
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - List as Customer B (EP-46, BOLA)
+# 200 with only Customer B's orders; customerId in the query is ignored.
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me/orders?customerId={{$guid}}
+Authorization: Bearer {{loginCustomerB.response.body.$.accessToken}}
+
+### GET Customers me orders - List invalid sort (EP-46)
+# status is not a sort field for customers (only createdAt, total).
+# @expect 400
+GET {{baseUrl}}/api/v1/customers/me/orders?sort=status
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me orders - List as Admin (EP-46)
+# @expect 403
+GET {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers me orders - List without token (EP-46)
+# @expect 401
+GET {{baseUrl}}/api/v1/customers/me/orders
+
+### POST Customers me orders - customerId in the body is ignored (EP-45, mass assignment)
+# The order is placed for the caller (Customer A); a customerId in the body has no effect.
+# @name placeMyOrderWithCustomerId
+# @expect 201
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "customerId": "{{$guid}}",
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### GET Customers me orders - Mass-assignment order belongs to Customer A (EP-47)
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrderWithCustomerId.response.body.$.id}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Customers me orders - Insufficient stock (EP-45)
+# @expect 409
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1000 }
+  ]
+}
+
+### POST Customers me orders - Unknown product (EP-45)
+# @expect 400
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{$guid}}", "quantity": 1 }
+  ]
+}
+
+### POST Customers me orders - No items (EP-45)
+# @expect 400
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "items": []
+}
+
+### POST Customers me orders - Malformed JSON (EP-45)
+# 400 validation-failed with errors.body, not 500.
+# @expect 400
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "items": [
+
+### POST Customers me orders - As Admin (EP-45)
+# @expect 403
+POST {{baseUrl}}/api/v1/customers/me/orders
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Customers me orders - Without token (EP-45)
+# @expect 401
+POST {{baseUrl}}/api/v1/customers/me/orders
+Content-Type: application/json
+
+{
+  "items": [
+    { "productId": "{{createProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### POST Customers me orders - Cancel other customer's order (EP-48, BOLA)
+# Customer B cancels Customer A's order: 404 before any 409, and nothing changes.
+# @expect 404
+POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}/cancel
+Authorization: Bearer {{loginCustomerB.response.body.$.accessToken}}
+
+### POST Customers me orders - Cancel unknown order (EP-48)
+# @expect 404
+POST {{baseUrl}}/api/v1/customers/me/orders/{{$guid}}/cancel
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Customers me orders - Cancel malformed id (EP-48)
+# 400 errors.orderId (D7).
+# @expect 400
+POST {{baseUrl}}/api/v1/customers/me/orders/not-a-guid/cancel
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Customers me orders - Cancel as Admin (EP-48)
+# @expect 403
+POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}/cancel
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Customers me orders - Cancel without token (EP-48)
+# @expect 401
+POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}/cancel
+
+### POST Customers me orders - Cancel with a reason (EP-48)
+# Pending to Cancelled; stock is returned.
+# @expect 204
+POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}/cancel
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "API test cleanup"
+}
+
+### POST Customers me orders - Cancel again (EP-48)
+# Only Pending orders can be cancelled: 409 invalid-status-transition.
+# @expect 409
+POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrder.response.body.$.id}}/cancel
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Customers me orders - Cancel without a body - Cleanup (EP-48)
+# @expect 204
+POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrderWithCustomerId.response.body.$.id}}/cancel
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### DELETE Products - Cleanup (EP-26)
+# @expect 204
+DELETE {{baseUrl}}/api/v1/products/{{createProduct.response.body.$.id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

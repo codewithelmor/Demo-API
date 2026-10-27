@@ -1,0 +1,112 @@
+# DESTRUCTIVE: changes Customer C's password, then erases Customer C (EP-09 success, EP-37 success).
+# Local only. Customer C is a throwaway user from api-tests/scripts/Initialize-LocalHttpEnv.ps1.
+# Run this file at most once per setup run; re-run the setup script before running it again.
+# Invoke-HttpTests.ps1 runs it only with -IncludeDestructive.
+# Visual Studio: send loginCustomerC first, then the rest in order.
+# Rate limit: 7 calls use the auth-strict bucket.
+
+### POST Auth - Login Customer C
+# @name loginCustomerC
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerCEmail}}",
+  "password": "{{customerCPassword}}"
+}
+
+### POST Auth - Change password wrong current password (EP-09)
+# 400 errors.currentPassword. Counts as one failed login (5 in a row lock the account);
+# the successful login below resets the count.
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{loginCustomerC.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{$guid}}",
+  "newPassword": "{{$guid}}"
+}
+
+### POST Auth - Change password (EP-09)
+# 204. Revokes all refresh tokens and rotates the security stamp.
+# @expect 204
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{loginCustomerC.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{customerCPassword}}",
+  "newPassword": "{{customerCPassword}}-changed"
+}
+
+### POST Auth - Refresh after password change (EP-05)
+# The refresh token from before the change was revoked.
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginCustomerC.response.body.$.refreshToken}}"
+}
+
+### POST Auth - Login with the old password (EP-04)
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerCEmail}}",
+  "password": "{{customerCPassword}}"
+}
+
+### POST Auth - Login with the new password (EP-04)
+# @name loginCustomerCChanged
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerCEmail}}",
+  "password": "{{customerCPassword}}-changed"
+}
+
+### POST Customers me - Erase wrong password (EP-37)
+# 400 errors.currentPassword (checked before open orders). Counts toward lockout.
+# @expect 400
+POST {{baseUrl}}/api/v1/customers/me/erase
+Authorization: Bearer {{loginCustomerCChanged.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{$guid}}"
+}
+
+### POST Customers me - Erase (EP-37)
+# 204. Anonymizes and soft deletes the customer and user, revokes all tokens.
+# @expect 204
+POST {{baseUrl}}/api/v1/customers/me/erase
+Authorization: Bearer {{loginCustomerCChanged.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{customerCPassword}}-changed"
+}
+
+### POST Auth - Login after erase (EP-04)
+# The user is deleted: 401 invalid-credentials (same body as a wrong password).
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerCEmail}}",
+  "password": "{{customerCPassword}}-changed"
+}
+
+### GET Customers me - After erase (EP-35)
+# The stamp check rejects the old access token (401); if it is still accepted, the record is gone (404).
+# @expect 401 404
+GET {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerCChanged.response.body.$.accessToken}}

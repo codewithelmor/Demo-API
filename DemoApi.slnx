@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DemoApi.Api/DemoApi.Api.csproj" />
+    <Project Path="src/DemoApi.Application/DemoApi.Application.csproj" />
+    <Project Path="src/DemoApi.Domain/DemoApi.Domain.csproj" />
+    <Project Path="src/DemoApi.Infrastructure/DemoApi.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/DemoApi.BuildingBlocks/DemoApi.BuildingBlocks.csproj" />
+    <Project Path="src/BuildingBlocks/DemoApi.SharedKernel/DemoApi.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DemoApi.ArchitectureTests/DemoApi.ArchitectureTests.csproj" />
+    <Project Path="tests/DemoApi.IntegrationTests/DemoApi.IntegrationTests.csproj" />
+    <Project Path="tests/DemoApi.UnitTests/DemoApi.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,21 @@
+# Expected privileges of demoapi_app (data-model section 5, ADR-0006).
+# One line per object: <object>: <privileges, sorted, comma separated>. A change here needs a data-model update.
+asp_net_role_claims: SELECT
+asp_net_roles: SELECT
+asp_net_user_claims: SELECT
+asp_net_user_logins: SELECT
+asp_net_user_roles: DELETE,INSERT,SELECT
+asp_net_user_tokens: SELECT
+asp_net_users: INSERT,SELECT,UPDATE
+audit_logs: INSERT,SELECT
+customers: INSERT,SELECT,UPDATE
+order_items: INSERT,SELECT,UPDATE
+order_status_history: INSERT,SELECT,UPDATE
+orders: INSERT,SELECT,UPDATE
+products: INSERT,SELECT,UPDATE
+refresh_tokens: INSERT,SELECT,UPDATE
+v_order_summaries: SELECT
+fn_customer_order_history(): EXECUTE
+fn_sales_report(): EXECUTE
+fn_top_products(): EXECUTE
+revoke_refresh_tokens(): EXECUTE

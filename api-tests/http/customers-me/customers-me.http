@@ -1,0 +1,177 @@
+# My profile (EP-35..EP-37). Catalog section 6. CustomerOnly: the customer ID comes from the token only;
+# an Admin gets 403 (Admins have no customer record).
+# Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1. Run top to bottom.
+# Visual Studio: send loginAdmin, loginCustomerA and getMyProfile first.
+# EP-37 success (erase) and the wrong-password case are in destructive/customer-c-lifecycle.http,
+# so Customer A is never erased and never moves toward lockout.
+
+### POST Auth - Login Admin
+# @name loginAdmin
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### POST Auth - Login Customer A
+# @name loginCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### GET Customers me - Profile (EP-35)
+# @name getMyProfile
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me - customerId in the query is ignored (EP-35)
+# Still the caller's own profile (BOLA, ST-02).
+# @expect 200
+GET {{baseUrl}}/api/v1/customers/me?customerId={{$guid}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Customers me - As Admin (EP-35)
+# @expect 403
+GET {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Customers me - Without token (EP-35)
+# @expect 401
+GET {{baseUrl}}/api/v1/customers/me
+
+### PUT Customers me - Valid with If-Match (EP-36)
+# @name updateMyProfile
+# @expect 200
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: {{getMyProfile.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer A {{$randomInt 1000 9999}}",
+  "phone": "+12025550101"
+}
+
+### PUT Customers me - Missing If-Match (EP-36)
+# @expect 428
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer A"
+}
+
+### PUT Customers me - If-Match star counts as missing (EP-36)
+# @expect 428
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: *
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer A"
+}
+
+### PUT Customers me - Stale ETag (EP-36)
+# @expect 412
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: {{getMyProfile.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer A"
+}
+
+### PUT Customers me - Invalid fields (EP-36)
+# 400: errors.firstName and errors.lastName (blank), errors.phone (not E.164).
+# @expect 400
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: {{updateMyProfile.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "",
+  "lastName": " ",
+  "phone": "+0123"
+}
+
+### PUT Customers me - Email in the body is ignored (EP-36)
+# Mass assignment (ST-03): the request has no email field, so the email does not change. 200.
+# @expect 200
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+If-Match: {{updateMyProfile.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer A",
+  "phone": null,
+  "email": "changed.api-test.{{$randomInt 100000 999999}}@example.com"
+}
+
+### PUT Customers me - As Admin (EP-36)
+# @expect 403
+PUT {{baseUrl}}/api/v1/customers/me
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+If-Match: {{getMyProfile.response.headers.ETag}}
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Admin"
+}
+
+### PUT Customers me - Without token (EP-36)
+# @expect 401
+PUT {{baseUrl}}/api/v1/customers/me
+Content-Type: application/json
+
+{
+  "firstName": "Test",
+  "lastName": "Customer"
+}
+
+### POST Customers me - Erase missing password (EP-37)
+# Shape check only (400 errors.currentPassword); the password is not checked, nothing counts toward lockout.
+# @expect 400
+POST {{baseUrl}}/api/v1/customers/me/erase
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{}
+
+### POST Customers me - Erase as Admin (EP-37)
+# @expect 403
+POST {{baseUrl}}/api/v1/customers/me/erase
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{$guid}}"
+}
+
+### POST Customers me - Erase without token (EP-37)
+# @expect 401
+POST {{baseUrl}}/api/v1/customers/me/erase
+Content-Type: application/json
+
+{
+  "currentPassword": "{{$guid}}"
+}

@@ -1,0 +1,315 @@
+# Auth and identity (EP-01..EP-11). Catalog section 3; permission matrix EP-01..11.
+# Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1 (Customer A and the unconfirmed user in the private env file).
+# Run top to bottom. Token-revoking requests (refresh reuse, logout-all) are at the end on purpose.
+# Visual Studio: send "loginCustomerA" first, then the requests that use it.
+# Rate limit: about 16 calls use the auth-strict bucket (10 per minute per IP). For a full run, raise the
+# local limit (README "Rate limits"), or later requests return 429.
+# Invalid tokens and short passwords are generated ({{$guid}}, {{$randomInt}}), never literals.
+# Not covered here: EP-02 and EP-11 success (they need the token from the email link in the api log;
+# the setup script covers EP-02 success). EP-09 success is in destructive/customer-c-lifecycle.http.
+
+### POST Auth - Register (EP-01)
+# Always 202 with the same message. The account stays unconfirmed and is not used again.
+# @expect 202
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "register.api-test.{{$randomInt 100000 999999}}@example.com",
+  "password": "{{$guid}}",
+  "firstName": "Test",
+  "lastName": "Register"
+}
+
+### POST Auth - Register existing email (EP-01)
+# Anti-enumeration: the same 202 as for a new email; nothing changes.
+# @expect 202
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{$guid}}",
+  "firstName": "Test",
+  "lastName": "Register"
+}
+
+### POST Auth - Register invalid fields (EP-01)
+# 400 validation-failed: errors.email, errors.password (under 15 characters), errors.firstName, errors.phone.
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "password": "{{$randomInt 1000 9999}}",
+  "firstName": "",
+  "lastName": "Register",
+  "phone": "555-0100"
+}
+
+### POST Auth - Confirm email with an invalid token (EP-02)
+# 400 invalid-token (generic for a wrong, expired or used token and an unknown user).
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/confirm-email
+Content-Type: application/json
+
+{
+  "userId": "{{$guid}}",
+  "token": "{{$guid}}"
+}
+
+### POST Auth - Confirm email missing fields (EP-02)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/confirm-email
+Content-Type: application/json
+
+{}
+
+### POST Auth - Resend confirmation (EP-03)
+# Always 202 with the same message.
+# @expect 202
+POST {{baseUrl}}/api/v1/auth/resend-confirmation
+Content-Type: application/json
+
+{
+  "email": "{{unconfirmedEmail}}"
+}
+
+### POST Auth - Resend confirmation invalid email (EP-03)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/resend-confirmation
+Content-Type: application/json
+
+{
+  "email": "not-an-email"
+}
+
+### POST Auth - Login Customer A (EP-04)
+# @name loginCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### POST Auth - Login unknown email (EP-04)
+# 401 invalid-credentials. An unknown email is used so no real account moves toward lockout.
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "nobody.{{$randomInt 100000 999999}}@example.invalid",
+  "password": "{{$guid}}"
+}
+
+### POST Auth - Login unconfirmed email (EP-04)
+# 403 email-not-confirmed, returned only because the password is correct.
+# @expect 403
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{unconfirmedEmail}}",
+  "password": "{{unconfirmedPassword}}"
+}
+
+### POST Auth - Login missing fields (EP-04)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{}
+
+### GET Auth - Me (EP-08)
+# @expect 200
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Auth - Me without token (EP-08)
+# @expect 401
+GET {{baseUrl}}/api/v1/auth/me
+
+### GET Auth - Me with an invalid token (EP-08)
+# @expect 401
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{$guid}}
+
+### POST Auth - Change password without token (EP-09)
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "{{$guid}}",
+  "newPassword": "{{$guid}}"
+}
+
+### POST Auth - Change password new password too short (EP-09)
+# Shape check only: the current password is not checked, so nothing counts toward lockout.
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{customerAPassword}}",
+  "newPassword": "{{$randomInt 1000 9999}}"
+}
+
+### POST Auth - Forgot password (EP-10)
+# Always 202 with the same message.
+# @expect 202
+POST {{baseUrl}}/api/v1/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "nobody.{{$randomInt 100000 999999}}@example.invalid"
+}
+
+### POST Auth - Forgot password invalid email (EP-10)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "not-an-email"
+}
+
+### POST Auth - Reset password with an invalid token (EP-11)
+# 400 invalid-token (generic).
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "nobody.{{$randomInt 100000 999999}}@example.invalid",
+  "token": "{{$guid}}",
+  "newPassword": "{{$guid}}"
+}
+
+### POST Auth - Reset password missing fields (EP-11)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/reset-password
+Content-Type: application/json
+
+{}
+
+### POST Auth - Refresh (EP-05)
+# Rotates the refresh token: a new pair in the same family.
+# @name refreshCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginCustomerA.response.body.$.refreshToken}}"
+}
+
+### POST Auth - Refresh missing token (EP-05)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{}
+
+### POST Auth - Refresh unknown token (EP-05)
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{$guid}}"
+}
+
+### POST Auth - Refresh reuse of a rotated token (EP-05)
+# Reuse revokes the whole family (ADR-0008) and returns 401 invalid-refresh-token.
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginCustomerA.response.body.$.refreshToken}}"
+}
+
+### POST Auth - Refresh after the family was revoked (EP-05)
+# The token from refreshCustomerA belongs to the revoked family.
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshCustomerA.response.body.$.refreshToken}}"
+}
+
+### POST Auth - Logout without token (EP-06)
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{$guid}}"
+}
+
+### POST Auth - Login Customer A again for the logout cases (EP-04)
+# @name loginCustomerA2
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### POST Auth - Logout missing refresh token (EP-06)
+# @expect 400
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{loginCustomerA2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{}
+
+### POST Auth - Logout unknown refresh token (EP-06)
+# Always 204; nothing changes.
+# @expect 204
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{loginCustomerA2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{$guid}}"
+}
+
+### POST Auth - Logout (EP-06)
+# @expect 204
+POST {{baseUrl}}/api/v1/auth/logout
+Authorization: Bearer {{loginCustomerA2.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginCustomerA2.response.body.$.refreshToken}}"
+}
+
+### POST Auth - Refresh after logout (EP-05)
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{loginCustomerA2.response.body.$.refreshToken}}"
+}
+
+### POST Auth - Logout all without token (EP-07)
+# @expect 401
+POST {{baseUrl}}/api/v1/auth/logout-all
+
+### POST Auth - Logout all (EP-07)
+# Revokes all of Customer A's refresh tokens and rotates the security stamp. Other files log in again.
+# @expect 204
+POST {{baseUrl}}/api/v1/auth/logout-all
+Authorization: Bearer {{loginCustomerA2.response.body.$.accessToken}}

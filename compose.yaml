@@ -1,0 +1,183 @@
+# Orders API local environment (solution-structure section 10, ADR-0012). Development only.
+#   docker compose up -d                        secrets-init -> postgres + valkey -> migrator -> api
+#   docker compose exec api cat /run/secrets/dev/SeedAdmin__Password
+#   docker compose --profile observability up -d   adds the Aspire dashboard on http://127.0.0.1:18888
+#   docker compose down -v                      reset data and regenerate dev secrets
+# PostgreSQL, Valkey and OTLP are not published; see compose.override.yaml.example for DB tools.
+name: demoapi
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  secrets-init:
+    image: alpine:3.24.3
+    <<: *hardening
+    entrypoint: ["/bin/sh", "/usr/local/bin/init-dev-secrets.sh"]
+    network_mode: none
+    restart: "no"
+    environment:
+      DEMOAPI_DB: demoapi
+      # Optional overrides from .env; empty = generate once into the dev-secrets volume.
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:-}
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:-}
+    volumes:
+      - dev-secrets:/secrets
+      - ./deploy/compose/init-dev-secrets.sh:/usr/local/bin/init-dev-secrets.sh:ro
+    logging: *logging
+
+  postgres:
+    image: postgres:18.6-trixie
+    <<: *hardening
+    restart: unless-stopped
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres/POSTGRES_PASSWORD
+      DEMOAPI_MIGRATOR_PASSWORD_FILE: /run/secrets/postgres/DEMOAPI_MIGRATOR_PASSWORD
+      DEMOAPI_APP_PASSWORD_FILE: /run/secrets/postgres/DEMOAPI_APP_PASSWORD
+      DEMOAPI_DB: demoapi
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./deploy/compose/postgres/01-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets/postgres
+        read_only: true
+        volume:
+          subpath: postgres
+    healthcheck:
+      # TCP on purpose: the init-phase server listens on the socket only, so this waits for the real start.
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "demoapi"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    logging: *logging
+
+  valkey:
+    image: valkey/valkey:9.1.2-alpine
+    <<: *hardening
+    restart: unless-stopped
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    command:
+      - valkey-server
+      - --aclfile
+      - /run/secrets/valkey/users.acl
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets/valkey
+        read_only: true
+        volume:
+          subpath: valkey
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/valkey/password)\" valkey-cli --user demoapi ping | grep -q PONG"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  migrator:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      target: migrator
+    image: demoapi/migrator:dev
+    <<: *hardening
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # No password here: Npgsql reads it from the pgpass file (Passfile=).
+      ConnectionStrings__PostgresMigrator: Host=postgres;Port=5432;Database=demoapi;Username=demoapi_migrator;Passfile=/run/secrets/migrator/pgpass;GSS Encryption Mode=Disable
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets/migrator
+        read_only: true
+        volume:
+          subpath: migrator
+    logging: *logging
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile
+      target: api
+    image: demoapi/api:dev
+    <<: *hardening
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    pids_limit: 512
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:${API_HTTP_PORT:-8080}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      SeedAdmin__Email: ${SEED_ADMIN_EMAIL:-admin@demoapi.local}
+      DataProtection__KeysPath: /var/lib/demoapi/dp-keys
+      # Telemetry goes to the dashboard when the observability profile runs; otherwise exports fail quietly.
+      # Set OTEL_EXPORTER_OTLP_ENDPOINT= (empty) in .env to turn the exporter off.
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://aspire-dashboard:18889}
+      OTEL_SERVICE_NAME: demoapi
+    volumes:
+      # Secrets (JWT key, seed Admin password, connection strings) as key-per-file config, read-only.
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets/dev
+        read_only: true
+        volume:
+          subpath: api
+      - dp-keys:/var/lib/demoapi/dp-keys
+    logging: *logging
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.6.2
+    profiles: ["observability"]
+    <<: *hardening
+    restart: unless-stopped
+    env_file:
+      - ./deploy/compose/aspire-dashboard.env
+    ports:
+      - "127.0.0.1:18888:18888"   # UI only; OTLP 18889 stays on the compose network
+    logging: *logging
+
+volumes:
+  dev-secrets:
+  pgdata:
+  dp-keys:

@@ -43,7 +43,8 @@ docker compose down -v                     # reset data and regenerate dev secre
 dotnet restore --locked-mode
 dotnet build -c Release                    # warnings are errors
 dotnet format --verify-no-changes
-dotnet run --project src/DemoApi.Api       # outside Docker; needs user secrets
+pwsh deploy/scripts/Initialize-DotnetRun.ps1   # once: publishes Postgres 5432 and Valkey 6379 on 127.0.0.1, sets user secrets (stop any local PostgreSQL first)
+dotnet run --project src/DemoApi.Api       # outside Docker; Development environment, uses those user secrets
 
 dotnet test tests/DemoApi.UnitTests
 dotnet test tests/DemoApi.ArchitectureTests

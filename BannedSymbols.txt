@@ -1,0 +1,11 @@
+P:System.DateTime.Now;Use IDateTimeProvider (FR-135)
+P:System.DateTime.UtcNow;Use IDateTimeProvider (FR-135)
+P:System.DateTime.Today;Use IDateTimeProvider (FR-135)
+P:System.DateTimeOffset.Now;Use IDateTimeProvider (FR-135)
+P:System.DateTimeOffset.UtcNow;Use IDateTimeProvider (FR-135)
+M:System.Threading.Thread.Sleep(System.Int32);Use await Task.Delay with a TimeProvider
+M:System.Threading.Thread.Sleep(System.TimeSpan);Use await Task.Delay with a TimeProvider
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteDelete``1(System.Linq.IQueryable{``0});Rows are never deleted (D11)
+M:Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ExecuteDeleteAsync``1(System.Linq.IQueryable{``0},System.Threading.CancellationToken);Rows are never deleted (D11)
+T:Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder`1;ExecuteUpdate bypasses audit (D11)
+N:Newtonsoft.Json;Use System.Text.Json

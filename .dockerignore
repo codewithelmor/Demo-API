@@ -1,0 +1,22 @@
+# Build context = repo root. Keep it small and free of secrets.
+**/bin/
+**/obj/
+**/TestResults/
+**/*.user
+**/*.pfx
+**/appsettings.*.local.json
+.git/
+.vs/
+.vscode/
+.idea/
+.claude/
+.env
+.env.*
+compose*.yaml
+secrets/
+artifacts/
+docs/
+api-tests/
+tests/
+deploy/
+*.md

@@ -1,0 +1,337 @@
+# Admin: users and roles (EP-12..EP-19). Catalog section 4; all AdminOnly (Customer 403, anonymous 401).
+# Stretch EP-20 and EP-21 are not built and not covered.
+# Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1. Run top to bottom.
+# Visual Studio: send loginAdmin, loginCustomerA, meAdmin, meCustomerA and findUnconfirmedUser first.
+# Data: creates one Admin per run, then removes its Admin role (users are never deleted).
+# The lock/unlock target is the unconfirmed test user, so the customers used by other files stay unlocked.
+
+### POST Auth - Login Admin
+# @name loginAdmin
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### POST Auth - Login Customer A
+# @name loginCustomerA
+# @expect 200
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{customerAEmail}}",
+  "password": "{{customerAPassword}}"
+}
+
+### GET Auth - Me as Admin (EP-08)
+# @name meAdmin
+# @expect 200
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Auth - Me as Customer A (EP-08)
+# @name meCustomerA
+# @expect 200
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Admin users - List (EP-12)
+# @expect 200
+GET {{baseUrl}}/api/v1/admin/users?page=1&pageSize=20&sort=email
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - Find the unconfirmed test user (EP-12)
+# Filters: email (contains), role, emailConfirmed.
+# @name findUnconfirmedUser
+# @expect 200
+GET {{baseUrl}}/api/v1/admin/users?email={{unconfirmedEmail}}&role=Customer&emailConfirmed=false
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - List invalid role and page size (EP-12)
+# 400: errors.role, errors.pageSize (max 100).
+# @expect 400
+GET {{baseUrl}}/api/v1/admin/users?role=Owner&pageSize=101
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - List invalid sort field (EP-12)
+# @expect 400
+GET {{baseUrl}}/api/v1/admin/users?sort=passwordHash
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - List as Customer (EP-12)
+# @expect 403
+GET {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Admin users - List without token (EP-12)
+# @expect 401
+GET {{baseUrl}}/api/v1/admin/users
+
+### GET Admin users - By id (EP-13)
+# @expect 200
+GET {{baseUrl}}/api/v1/admin/users/{{findUnconfirmedUser.response.body.$.items[0].id}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - Unknown id (EP-13)
+# @expect 404
+GET {{baseUrl}}/api/v1/admin/users/{{$guid}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - Malformed id (EP-13)
+# 400 errors.userId (no route constraint, D7).
+# @expect 400
+GET {{baseUrl}}/api/v1/admin/users/not-a-guid
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin users - By id as Customer (EP-13)
+# 403 for any ID, so nothing leaks about whether it exists.
+# @expect 403
+GET {{baseUrl}}/api/v1/admin/users/{{$guid}}
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Admin users - By id without token (EP-13)
+# @expect 401
+GET {{baseUrl}}/api/v1/admin/users/{{$guid}}
+
+### POST Admin users - Lock (EP-14)
+# Admin lock with an end date and a reason. Idempotent.
+# @expect 204
+POST {{baseUrl}}/api/v1/admin/users/{{findUnconfirmedUser.response.body.$.items[0].id}}/lock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "until": "2099-01-01T00:00:00Z",
+  "reason": "API test lock"
+}
+
+### POST Admin users - Lock with a past date (EP-14)
+# @expect 400
+POST {{baseUrl}}/api/v1/admin/users/{{findUnconfirmedUser.response.body.$.items[0].id}}/lock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "until": "2020-01-01T00:00:00Z"
+}
+
+### POST Admin users - Lock with a date without offset (EP-14)
+# @expect 400
+POST {{baseUrl}}/api/v1/admin/users/{{findUnconfirmedUser.response.body.$.items[0].id}}/lock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "until": "2099-01-01T00:00:00"
+}
+
+### POST Admin users - Lock yourself (EP-14)
+# 409 admin-safeguard.
+# @expect 409
+POST {{baseUrl}}/api/v1/admin/users/{{meAdmin.response.body.$.userId}}/lock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{}
+
+### POST Admin users - Lock unknown user (EP-14)
+# @expect 404
+POST {{baseUrl}}/api/v1/admin/users/{{$guid}}/lock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{}
+
+### POST Admin users - Lock as Customer (EP-14)
+# @expect 403
+POST {{baseUrl}}/api/v1/admin/users/{{meAdmin.response.body.$.userId}}/lock
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{}
+
+### POST Admin users - Lock without token (EP-14)
+# @expect 401
+POST {{baseUrl}}/api/v1/admin/users/{{$guid}}/lock
+Content-Type: application/json
+
+{}
+
+### POST Admin users - Unlock (EP-15)
+# Cleanup for the lock above.
+# @expect 204
+POST {{baseUrl}}/api/v1/admin/users/{{findUnconfirmedUser.response.body.$.items[0].id}}/unlock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Admin users - Unlock when not locked (EP-15)
+# No-op, still 204.
+# @expect 204
+POST {{baseUrl}}/api/v1/admin/users/{{findUnconfirmedUser.response.body.$.items[0].id}}/unlock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Admin users - Unlock unknown user (EP-15)
+# @expect 404
+POST {{baseUrl}}/api/v1/admin/users/{{$guid}}/unlock
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### POST Admin users - Unlock as Customer (EP-15)
+# @expect 403
+POST {{baseUrl}}/api/v1/admin/users/{{$guid}}/unlock
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### POST Admin users - Unlock without token (EP-15)
+# @expect 401
+POST {{baseUrl}}/api/v1/admin/users/{{$guid}}/unlock
+
+### GET Admin roles - List (EP-18)
+# @expect 200
+GET {{baseUrl}}/api/v1/admin/roles
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### GET Admin roles - List as Customer (EP-18)
+# @expect 403
+GET {{baseUrl}}/api/v1/admin/roles
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### GET Admin roles - List without token (EP-18)
+# @expect 401
+GET {{baseUrl}}/api/v1/admin/roles
+
+### POST Admin users - Create Admin (EP-19)
+# 201 with Location /api/v1/admin/users/{id}. No password; the reset link goes to the api log.
+# @name createAdmin
+# @expect 201
+POST {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "admin.api-test.{{$randomInt 100000 999999}}@example.com",
+  "firstName": "Test",
+  "lastName": "Admin"
+}
+
+### POST Admin users - Create Admin duplicate email (EP-19)
+# @expect 409
+POST {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "{{createAdmin.response.body.$.email}}",
+  "firstName": "Test",
+  "lastName": "Admin"
+}
+
+### POST Admin users - Create Admin invalid fields (EP-19)
+# @expect 400
+POST {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "firstName": "",
+  "lastName": "Admin"
+}
+
+### POST Admin users - Create Admin as Customer (EP-19)
+# @expect 403
+POST {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "email": "admin.api-test.{{$randomInt 100000 999999}}@example.com",
+  "firstName": "Test",
+  "lastName": "Admin"
+}
+
+### POST Admin users - Create Admin without token (EP-19)
+# @expect 401
+POST {{baseUrl}}/api/v1/admin/users
+Content-Type: application/json
+
+{
+  "email": "admin.api-test.{{$randomInt 100000 999999}}@example.com",
+  "firstName": "Test",
+  "lastName": "Admin"
+}
+
+### GET Admin users - Created Admin from Location (EP-13)
+# @expect 200
+GET {{baseUrl}}{{createAdmin.response.headers.Location}}
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Admin users - Assign Admin role when already Admin (EP-16)
+# No-op, still 204.
+# @expect 204
+PUT {{baseUrl}}/api/v1/admin/users/{{createAdmin.response.body.$.id}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Admin users - Assign Admin role to a customer (EP-16)
+# 409 user-is-customer.
+# @expect 409
+PUT {{baseUrl}}/api/v1/admin/users/{{meCustomerA.response.body.$.userId}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Admin users - Assign a role other than Admin (EP-16)
+# 400 errors.role.
+# @expect 400
+PUT {{baseUrl}}/api/v1/admin/users/{{createAdmin.response.body.$.id}}/roles/Customer
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Admin users - Assign Admin role to unknown user (EP-16)
+# @expect 404
+PUT {{baseUrl}}/api/v1/admin/users/{{$guid}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### PUT Admin users - Assign Admin role as Customer (EP-16)
+# @expect 403
+PUT {{baseUrl}}/api/v1/admin/users/{{meCustomerA.response.body.$.userId}}/roles/Admin
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### PUT Admin users - Assign Admin role without token (EP-16)
+# @expect 401
+PUT {{baseUrl}}/api/v1/admin/users/{{$guid}}/roles/Admin
+
+### DELETE Admin users - Remove your own Admin role (EP-17)
+# 409 admin-safeguard.
+# @expect 409
+DELETE {{baseUrl}}/api/v1/admin/users/{{meAdmin.response.body.$.userId}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Admin users - Remove a role other than Admin (EP-17)
+# @expect 400
+DELETE {{baseUrl}}/api/v1/admin/users/{{createAdmin.response.body.$.id}}/roles/Customer
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Admin users - Remove Admin role from unknown user (EP-17)
+# @expect 404
+DELETE {{baseUrl}}/api/v1/admin/users/{{$guid}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Admin users - Remove Admin role as Customer (EP-17)
+# @expect 403
+DELETE {{baseUrl}}/api/v1/admin/users/{{meAdmin.response.body.$.userId}}/roles/Admin
+Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
+
+### DELETE Admin users - Remove Admin role without token (EP-17)
+# @expect 401
+DELETE {{baseUrl}}/api/v1/admin/users/{{$guid}}/roles/Admin
+
+### DELETE Admin users - Remove Admin role - Cleanup (EP-17)
+# The Admin created above loses the role, so Admins do not pile up across runs.
+# @expect 204
+DELETE {{baseUrl}}/api/v1/admin/users/{{createAdmin.response.body.$.id}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+### DELETE Admin users - Remove Admin role when not Admin (EP-17)
+# No-op, still 204.
+# @expect 204
+DELETE {{baseUrl}}/api/v1/admin/users/{{createAdmin.response.body.$.id}}/roles/Admin
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

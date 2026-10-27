@@ -1,0 +1,126 @@
+# Orders API CI (solution-structure section 11). Same commands as local; no automatic test retries.
+# Tests run on Microsoft Testing Platform (global.json test.runner); exit code 8 = zero tests ran = failure.
+# Coverage: add a coverage extension to the test projects, then `--coverage` and PublishCodeCoverageResults@2.
+trigger:
+  branches:
+    include: [main]
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
+  TEST_RESULTS: $(Agent.TempDirectory)/TestResults
+  GITLEAKS_VERSION: '8.30.1'
+  GITLEAKS_SHA256: '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb'
+  TEST_BUDGET_SECONDS: '300'   # NFR-16: full suite <= 5 minutes (warning only)
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        displayName: Restore, build, format, audit
+        steps:
+          - template: deploy/azure-pipelines/steps-restore-build.yml
+
+          - script: dotnet format DemoApi.slnx --verify-no-changes --no-restore
+            displayName: Format check
+
+          - script: |
+              set -euo pipefail
+              dotnet package list --project DemoApi.slnx --vulnerable --include-transitive | tee vulnerable.txt
+              if grep -q "has the following vulnerable packages" vulnerable.txt; then
+                echo "##vso[task.logissue type=error]Vulnerable NuGet packages found"
+                exit 1
+              fi
+            displayName: Vulnerable packages
+
+      - job: DockerImages
+        displayName: Build container images
+        steps:
+          - checkout: self
+            fetchDepth: 1
+          - script: |
+              set -euo pipefail
+              docker build -f deploy/docker/Dockerfile --target migrator -t demoapi/migrator:ci .
+              docker build -f deploy/docker/Dockerfile --target api -t demoapi/api:ci .
+            displayName: docker build (migrator, api)
+
+  - stage: Test
+    dependsOn: Build
+    jobs:
+      - job: FastTests
+        displayName: Unit + architecture tests
+        steps:
+          - template: deploy/azure-pipelines/steps-restore-build.yml
+
+          - script: |
+              set -euo pipefail
+              start=$(date +%s)
+              for p in tests/DemoApi.UnitTests tests/DemoApi.ArchitectureTests; do
+                dotnet test --project "$p" -c Release --no-build \
+                  --report-xunit-trx --results-directory "$(TEST_RESULTS)"
+              done
+              echo "elapsed: $(( $(date +%s) - start )) s"
+            displayName: dotnet test (unit, architecture)
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: '$(TEST_RESULTS)/**/*.trx'
+              testRunTitle: Unit + architecture
+              failTaskOnFailedTests: true
+
+      - job: IntegrationTests
+        displayName: Integration tests (Testcontainers)
+        timeoutInMinutes: 30
+        steps:
+          - template: deploy/azure-pipelines/steps-restore-build.yml
+
+          - script: docker version
+            displayName: Docker available
+
+          - script: |
+              set -euo pipefail
+              start=$(date +%s)
+              dotnet test --project tests/DemoApi.IntegrationTests -c Release --no-build \
+                --report-xunit-trx --results-directory "$(TEST_RESULTS)"
+              elapsed=$(( $(date +%s) - start ))
+              echo "elapsed: ${elapsed} s"
+              if [ "$elapsed" -gt "$(TEST_BUDGET_SECONDS)" ]; then
+                echo "##vso[task.logissue type=warning]Integration tests took ${elapsed}s (budget $(TEST_BUDGET_SECONDS)s, NFR-16)"
+              fi
+            displayName: dotnet test (integration)
+
+          - task: PublishTestResults@2
+            displayName: Publish test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: '$(TEST_RESULTS)/**/*.trx'
+              testRunTitle: Integration
+              failTaskOnFailedTests: true
+
+  - stage: SecretScan
+    dependsOn: []
+    jobs:
+      - job: Gitleaks
+        displayName: gitleaks (full history)
+        steps:
+          - checkout: self
+            fetchDepth: 0
+          - script: |
+              set -euo pipefail
+              f="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+              curl -sSfL -o "$f" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$f"
+              echo "${GITLEAKS_SHA256}  $f" | sha256sum -c -
+              tar -xzf "$f" gitleaks
+              ./gitleaks git . --redact --no-banner --exit-code 1
+            displayName: gitleaks detect
