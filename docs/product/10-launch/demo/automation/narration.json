@@ -1,0 +1,42 @@
+[
+ {
+  "id": "intro",
+  "text": "Hi! In this quick demo, I'll walk you through the Orders API using its built-in Scalar reference page. We'll check the health probes, sign in as an admin, and then list products, customers, and orders.",
+  "dur": 13.728
+ },
+ {
+  "id": "ready",
+  "text": "First, the readiness probe. I open the endpoint, click Test Request, and send it. We get a two hundred, and both dependencies, Postgres and Valkey, report healthy.",
+  "dur": 12.552
+ },
+ {
+  "id": "live",
+  "text": "Next, the liveness probe. It's a lightweight check that the process is up, and it responds healthy.",
+  "dur": 6.792
+ },
+ {
+  "id": "login",
+  "text": "Now let's sign in as the admin. I enter the email and password, which I've blurred here, and send the request. We get back an access token and a refresh token. I'll copy the access token, so I can use it for the next calls.",
+  "dur": 15.288
+ },
+ {
+  "id": "products",
+  "text": "With the token copied, let's list products. I paste it into the bearer token field, and send the request. The response is paginated, and shows each product's name, SKU, price, and stock quantity.",
+  "dur": 14.592
+ },
+ {
+  "id": "customers",
+  "text": "Now the customers list. This one is admin only, so it works because we're using the admin token. Each customer comes back with their name, email, and creation date.",
+  "dur": 11.568
+ },
+ {
+  "id": "orders",
+  "text": "And finally, the orders list. Every order shows its status, total, currency, and the customer it belongs to.",
+  "dur": 8.208
+ },
+ {
+  "id": "outro",
+  "text": "That's it! Health probes, admin login, and three protected list endpoints, all working end to end in Scalar. Thanks for watching.",
+  "dur": 9.96
+ }
+]
