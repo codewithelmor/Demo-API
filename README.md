@@ -4,8 +4,15 @@ A .NET 10 REST API for managing products, customers and orders, with **Admin** a
 
 There is no UI. The API is documented with OpenAPI and browsable with Scalar.
 
+## Demo video
+
+**[Orders API: walkthrough in Scalar](https://www.loom.com/share/080eb5eb165e4b348c97391de56e3aa7)**
+
+A narrated walkthrough (about 1 min 45 s) of the running API in the Scalar UI. It checks the health endpoints, signs in as Admin to get a bearer token, then calls the products, customers and orders endpoints with that token.
+
 ## Contents
 
+- [Demo video](#demo-video)
 - [Features](#features)
 - [Tech stack](#tech-stack)
 - [Quick start](#quick-start)
