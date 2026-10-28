@@ -1,9 +1,15 @@
-# Copy to compose.override.yaml (git-ignored) to reach PostgreSQL and Valkey from local tools.
+# Copy to compose.override.yaml (git-ignored) for local development. It lets you:
+#   - run the full .http suite without hitting 429 (raised rate limits on the api service)
+#   - reach PostgreSQL and Valkey from local tools (ports published on the host)
 # Ports bind to 127.0.0.1 only (ADR-0012). Credentials (users demoapi_migrator / demoapi_app / demoapi):
 #   docker compose run --rm --no-deps --entrypoint cat secrets-init /secrets/.generated/migrator_password
 #   (or app_password, valkey_password)
 #
 # services:
+#   api:
+#     environment:
+#       RateLimiting__AuthStrict__PermitLimit: "1000"
+#       RateLimiting__Refresh__PermitLimit: "1000"
 #   postgres:
 #     ports:
 #       - "127.0.0.1:5432:5432"
