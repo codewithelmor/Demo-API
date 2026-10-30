@@ -1,0 +1,44 @@
+# Design profile - Orders Shop web front end (Phase 2)
+# Approved by the product owner 2026-10-30. Draft by product-designer (Mode: PLAN).
+# Figma not connected yet; Figma work is a board story (connect Figma and duplicate the Obra kit first).
+product: Orders Shop            # placeholder name (UX-D5)
+library: shadcn-ui
+library_version: { shadcn_cli: 4.22.1, tailwindcss: 4.3.3, radix_ui: 1.8.1, lucide_react: 1.61.0 }
+style: base-nova                # shadcn default style; changes class lists only, not token names
+base_color: neutral             # tailwind.baseColor in components.json
+css_variables: true             # globals.css :root / .dark, OKLCH, @theme inline
+brand:
+  primary: "#2563EB"            # placeholder until a real brand; dark value computed for 4.5:1
+theme:
+  modes: [light, dark]          # Figma collection "Theme"; code: .dark class on <html>
+  high_contrast: false          # code still honours forced-colors (Windows High Contrast)
+  dark_mode_switch: system preference + manual toggle in account menu
+  custom_tokens:                # approved deviation from stock shadcn: status badges and alerts
+    - success, success-foreground, warning, warning-foreground, info, info-foreground
+  contrast_fixes:               # approved deviation: shadcn defaults fail WCAG 1.4.11 / 1.4.3
+    - input: darken to >= 3:1 against background
+    - ring: solid >= 3:1; no /50 opacity on the focus ring
+    - muted-foreground: >= 4.5:1 on muted and on background
+radius: { base: 10px, formula: "--radius 0.625rem; sm x0.6, md x0.8, lg x1, xl x1.4" }
+spacing: tailwind (4px unit)
+typography:
+  sans: { family: Geist, license: OFL-1.1, delivery: "@fontsource-variable/geist (self-hosted; CSP blocks font CDNs)" }
+  mono: { family: Geist Mono, license: OFL-1.1, use: "SKU, order IDs, traceId reference" }
+  scale: [xs 12/16, sm 14/20, base 16/24, lg 18/28, xl 20/28, 2xl 24/32, 3xl 30/36]
+  weights: [400, 500, 600]
+icons: { set: lucide, license: ISC, sizes: [16, 20], stroke: 2 }
+breakpoints: { sm: 640, md: 768, lg: 1024, xl: 1280, 2xl: 1536 }
+layouts:
+  customer: { min_width: 360, frames: [360, 768, 1280], container_max: 1280, gutter: "16 mobile / 24 desktop" }
+  admin:    { min_width: 1024, frames: [1280, 1024], sidebar: "icons below 1280, Sheet below 1024" }
+density: default (controls h-9 = 36px)
+targets: "min 24x24 (WCAG 2.5.8); 40-44px for icon buttons in the mobile header, cart and quantity stepper"
+wcag: "2.2 AA in both modes"
+language: en-US only
+figma:
+  kit: "Obra shadcn/ui kit, Community Edition (MIT, Obra Studio BV); duplicated manually by the product owner; Pro edition never used"
+  files: ["Orders Shop – Design System", "Orders Shop – Web"]
+  collections: { Theme: "Light, Dark (37)", Radius: 8, Spacing: 14, Typography: "~16 + ~10 text styles", Layout: "5 breakpoints + 3 grids" }
+  r1_frames: ~116
+  apply_batches: "0 inspect kit, 1 foundations, 2 components + icons + patterns, 3 R1 screens 1-6, 4 R1 screens 7-12 + prototype"
+  effort: "4-5 days (R1); R2 Admin 3-4 days later"

@@ -101,3 +101,10 @@ For an internal POC, "revenue" means value to the organization and learning valu
 
 ## 10. Open questions
 - None blocking. Domain rules confirmed in `00-summary.md` (section 9 answers).
+
+## Phase 2 addendum: Web front end (2026-10-30)
+- **Problem:** Customers can only use the Orders API through developer tools (Scalar, .http, Postman). Staff manage data the same way. Neither group has a usable screen.
+- **Users:** Customers (self-service: account, catalog, own orders, profile) first; Admins (back office) second.
+- **Shape:** React + TypeScript SPA, shadcn/ui + Tailwind, designed in Figma. The browser talks only to a small ASP.NET Core BFF (YARP) that keeps tokens server-side. The API source does not change.
+- **Success:** (1) A new customer goes from register to a placed order in under 5 minutes without help. (2) 100% of screens meet the screen Definition of Done. (3) No access or refresh token ever reaches browser JavaScript or storage. (4) Zero lines changed under `src/DemoApi.*` in Phase 2.
+- **Out of scope:** an anonymous catalog, payments, shipping addresses, product images and categories, email change, native mobile apps, more languages, and any API code change.

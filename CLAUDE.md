@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-The repo has **planning documents only**. No application code exists yet. The plan is approved and the next step is building slice S1a (walking skeleton) from Azure DevOps work item #1. Start with `docs/product/00-summary.md`; it holds the snapshot, phase status, every key decision, and the next step.
+Phase 1 (the API, slices S1a-S4) is built on branch `feature/build-orders-api` and not yet merged. Phase 2 (a React + TypeScript web front end behind an ASP.NET Core BFF, no API source changes) is planned: see `docs/product/02-requirements/prd-frontend.md`, ADR-0015, `docs/product/04-architecture/frontend-architecture.md` and `docs/product/06-delivery/delivery-plan.md` §10. Start with `docs/product/00-summary.md`; it holds the snapshot, phase status, every key decision, and the next step.
 
 The product is the **Orders API**: a .NET 10 REST API (no UI) for products, customers and orders, with Admin and Customer roles. It is a proof of concept with production-grade practices. Its long-term goal is a reusable `dotnet new` template (only SharedKernel, BuildingBlocks, Auth, AdminUsers and Products are kept; see solution-structure §13).
 
@@ -28,7 +28,7 @@ When code and these documents disagree, raise it; do not silently change a decis
 
 ## Stack (fixed; do not swap without approval)
 
-.NET 10 (SDK 10.0.402), FastEndpoints 8.3.x (command bus for CQRS, no MediatR), FluentValidation, EF Core 10 + Npgsql (writes, migrations), Dapper (views, functions, one stored procedure), PostgreSQL 18, Valkey 9.1 via HybridCache (not Redis), ASP.NET Core Identity with our own JWT issuer and rotated refresh tokens (no `MapIdentityApi`), Microsoft.Extensions.Resilience (no direct Polly), ASP.NET Core rate limiting, FastEndpoints.OpenApi + Scalar (not FastEndpoints.Swagger). Tests: xUnit v3, Shouldly (not FluentAssertions), NSubstitute, Bogus, Testcontainers, Respawn, ArchUnitNET. CI: Azure Pipelines; repo and board in Azure DevOps (org `codewithelmor`, project `Demo-API`).
+.NET 10 (SDK 10.0.402), FastEndpoints 8.3.x (command bus for CQRS, no MediatR), FluentValidation, EF Core 10 + Npgsql (writes, migrations), Dapper (views, functions, one stored procedure), PostgreSQL 18, Valkey 9.1 via HybridCache (not Redis), ASP.NET Core Identity with our own JWT issuer and rotated refresh tokens (no `MapIdentityApi`), Microsoft.Extensions.Resilience (no direct Polly), ASP.NET Core rate limiting, FastEndpoints.OpenApi + Scalar (not FastEndpoints.Swagger). Tests: xUnit v3, Shouldly (not FluentAssertions), NSubstitute, Bogus, Testcontainers, Respawn, ArchUnitNET. CI: Azure Pipelines; repo and board in Azure DevOps (org `codewithelmor`, project `Demo-App`, renamed from `Demo-API` on 2026-10-30).
 
 ## Planned commands
 

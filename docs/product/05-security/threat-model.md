@@ -426,3 +426,197 @@ All accepted by the product owner at sign-off.
 - [NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html)
 - [CycloneDX / ECMA-424](https://ecma-international.org/publications-and-standards/standards/ecma-424/)
 - [SLSA specification](https://slsa.dev/spec/v1.1/)
+
+---
+
+## 10. Phase 2: web front end and BFF
+
+| Field | Value |
+|---|---|
+| Date | 2026-10-30 |
+| Status | Approved 2026-10-30 (S-D9..S-D13 accepted by the product owner) |
+| Scope | React SPA in the BFF `wwwroot`, `DemoApi.Bff` (ASP.NET Core 10 + YARP 2.3.0), Valkey session store, `bff-dp-keys` volume, `https` compose profile, npm build chain, browser storage. The API is unchanged (G4) |
+| Based on | [ADR-0015](../04-architecture/adr/0015-web-front-end-bff.md), [frontend-architecture.md](../04-architecture/frontend-architecture.md), [prd-frontend.md](../02-requirements/prd-frontend.md), [user-flows.md](../03-design/ux/user-flows.md), ADR-0008, ADR-0010 |
+| Standards | OWASP ASVS 5.0.0 (Level 2; **V3 Web Frontend Security now in scope**), OWASP Top 10:2025, OWASP API Security Top 10:2023 for the API |
+| Author | `security-privacy-reviewer` (draft), main session (saved) |
+
+### 10.1 New assets
+
+| ID | Asset | Class | Where |
+|---|---|---|---|
+| A15 | BFF session cookie `__Host-demoapi` (opaque, Data Protection protected) | Credential | Browser cookie jar |
+| A16 | Session entries: access and refresh tokens, user summary | Credential (critical) | Valkey `bff:session:*`, encrypted |
+| A17 | BFF Data Protection key ring | Secret | `bff-dp-keys` volume, not encrypted at rest locally |
+| A18 | Dev HTTPS certificate private key | Secret | Host file system, mounted read-only (`https` profile) |
+| A19 | Cart (product IDs, quantities, prices seen), keyed by a hash of the user ID | Internal | Browser `localStorage` |
+| A20 | SPA bundle integrity | Integrity | `wwwroot`, built from npm |
+
+### 10.2 Trust boundaries (new)
+
+| ID | Boundary | Crossing flows |
+|---|---|---|
+| TB-5 | Browser runtime → BFF. SPA code runs in an untrusted browser. Other `localhost` ports are the **same site** (cookies ignore ports), so `SameSite` does not separate them | F16, F17, F21, F26 |
+| TB-6 | BFF → API. The BFF holds tokens; the API still checks every request (roles, BOLA) | F18 |
+
+### 10.3 Data flow diagram (Phase 2)
+
+```mermaid
+flowchart LR
+    subgraph TB0["TB-0 / TB-5 Untrusted: browser"]
+        spa["React SPA<br/>no tokens, cart in localStorage"]
+        other["Other localhost origins<br/>dev servers, Scalar tab"]
+        ls[("localStorage<br/>cart keyed by user hash")]
+    end
+    subgraph TB1["TB-1 Developer host"]
+        cert[("Dev HTTPS cert + key<br/>https profile only")]
+        devu["Developer: Scalar, httpyac"]
+        subgraph TB2["TB-2 Compose network"]
+            bff["DemoApi.Bff<br/>YARP allow-list, sessions, CSRF,<br/>per-IP limits, single-flight refresh"]
+            api["Orders API (unchanged)<br/>auth limits raised to 1000"]
+            subgraph TB3["Data stores"]
+                vk[("Valkey<br/>bff:session:* encrypted<br/>products:* cache")]
+                bdp[("bff-dp-keys volume")]
+                pg[("PostgreSQL")]
+            end
+            dash["Aspire dashboard"]
+        end
+    end
+    subgraph TB4["TB-4 Supply chain"]
+        npm["npm registry"]
+        node["node image (digest)"]
+    end
+
+    spa -->|"F16 cookie + X-CSRF + Origin, 127.0.0.1:8081 or :8443"| bff
+    bff -->|"F17 static SPA, CSP headers"| spa
+    other -.->|"F21 same-site requests carry the cookie"| bff
+    bff -->|"F18 TB-6 Bearer access token, allow-listed routes"| api
+    bff -->|"F19 RESP as demoapi_bff ~bff:*"| vk
+    bff -->|"F20 protect/unprotect cookie and session"| bdp
+    api -->|"F4 SQL"| pg
+    devu -->|"F25 direct 127.0.0.1:8080, raised limits"| api
+    spa -->|"F26 read/write cart"| ls
+    bff -->|"F22 OTLP"| dash
+    cert -->|"F24 read-only mount"| bff
+    npm -->|"F23 packages at build"| node
+```
+
+### 10.4 STRIDE threats (Phase 2)
+
+Rating is likelihood/impact (L/M/H) → risk. Requirements NFR-F29..F43 are in prd-frontend.md §7.
+
+| ID | STRIDE | Element / flow | Threat | L/I → risk | Mitigation | Verification |
+|---|---|---|---|---|---|---|
+| T-37 | S | A15, F16 | Session cookie stolen and replayed (malware, extension, shared computer, another localhost port) | L/H → **Medium** | HttpOnly, Secure, `__Host-`, opaque ID (NFR-F10); server-side session deleted on logout/logout-all (FR-F004); Admin idle 30 min (NFR-F12); Admin 12 h absolute (S-D10) | FT-02, FT-13 |
+| T-38 | S | `/bff/login`, F21 | Session fixation or cookie tossing from another localhost app | L/M → Low | New session ID on every sign-in; existing session deleted and EP-06 called; sessions created only by `/bff/login`; IDs ≥ 128 bits CSPRNG (NFR-F30) | FT-02 |
+| T-39 | T/E | F16, F21 | CSRF on state-changing routes; `SameSite=Strict` does not block other localhost ports | L/H → **Medium** | `X-CSRF: 1` + exact Origin match against an allow-list (NFR-F11, NFR-F29); missing or `null` Origin → 403; `Sec-Fetch-Site` must be `same-origin` when present; no CORS; no state change on GET | FT-03 |
+| T-40 | S | `/bff/login` | Login CSRF | L/M → Low | Same check on `/bff/login` | FT-03 |
+| T-41 | E/I | SPA, F16 | XSS becomes session riding: script calls any allow-listed route as the victim; as Admin it can create Admins (EP-19), assign roles (EP-16) or read all PII | M/H → **High** (Admin), Medium (Customer) | React escaping only; lint bans and safe links (NFR-F35); strict CSP (NFR-F13); Trusted Types (S-D13); recent sign-in for EP-16/EP-19 (S-D11); API asks current password on EP-09 and EP-37 | FT-10 |
+| T-42 | S/T | `/sign-in?returnUrl=` | Open redirect; `reason` reflected | M/M → **Medium** | NFR-F34: relative SPA paths only; `reason` is a fixed code list | FT-11 |
+| T-43 | E | YARP, F18 | Confused deputy or allow-list bypass (encoded/dot segments, case, `//`, method override, never-proxied routes, unknown `/api/*` → `index.html`, header injection) | L/H → **Medium** | Exact allow-list and methods (ADR-0015); typed constraints and header stripping (NFR-F32); fixed destination. The API stays the enforcer | FT-04 |
+| T-44 | I/T/S | Valkey, F19 | Session store compromise, including copying a victim's encrypted blob under the attacker's key | L/H → **Medium** | ACL `demoapi_bff` `~bff:*` `-@dangerous`; API user has no `bff:*`; Valkey port not published; Data Protection; payload bound to session ID (NFR-F30) | FT-06 |
+| T-45 | S/D | Refresh coordinator | Refresh races: logout during refresh writes session back; crash after EP-05 before save; retried EP-05 | L/M → Low | Single flight, `CancellationToken.None`, no retry, replay only after 401; conditional save (NFR-F31). Residual: crash window signs out (accepted) | FT-05 |
+| T-46 | D/S | BFF limiter | Rate-limit bypass: spoofed `X-Forwarded-For`, rotating IPv6, anonymous floods | L/M → Low | `RemoteIpAddress` only, IPv6 /64; anonymous limit (NFR-F37); lockout per account | FT-07 |
+| T-47 | I | BFF logs, traces, errors | Tokens, cookies, passwords, reset/confirm tokens leak (developer exception page, YARP/HttpClient logging, OTel headers, raw upstream bodies, SPA route query strings) | M/H → **High** | NFR-F15, NFR-F39; `Referrer-Policy: no-referrer`; tokens removed from address bar (FR-F025, NFR-F43) | FT-01, FT-08, FT-16, FT-18 |
+| T-48 | T | F17 | Clickjacking | L/M → Low | `frame-ancestors 'none'`; `X-Frame-Options: DENY` on every response (NFR-F36) | FT-09 |
+| T-49 | T | F23, A20 | npm supply chain: malicious/typosquatted package, install scripts, `overrides`, build tool injecting script | M/H → **High** | Lockfile + `npm ci`; `.npmrc` `min-release-age=7`, `allow-git=none`, `save-exact`; NFR-F40 | FT-15 |
+| T-50 | I | A19, browser | Shared computer: cart survives session end; history keeps links; cache/bfcache shows PII after sign-out | M/L → Low | NFR-F14; hashed cart key and schema check (NFR-F41); `no-store` and `Clear-Site-Data` (NFR-F33); NFR-F43 | FT-14, FT-19 |
+| T-51 | S/E | Admin idle (NFR-F12) | Idle timeout defeated by background refetch/polling or client-only timer | M/M → **Medium** | Server-side check with `TimeProvider`; `/bff/user` does not count; no timed polling in `/admin` (NFR-F38) | FT-12 |
+| T-52 | D/I | A17 | Data Protection key loss or exposure | L/M → Low | Own volume; `SetApplicationName`. Production: Blob + Key Vault | FT-06 |
+| T-53 | I/S | A18 | Dev cert key committed or shared; custom root CA; HSTS on localhost | L/M → Low | NFR-F42 | FT-17 |
+| T-54 | D | Valkey | Eviction or restart ends sessions; cache flooding evicts sessions; Valkey down → 503 | L/M → Low | S-D12; fail closed; metric on session ends by reason | FT-06 |
+| T-55 | R | BFF | BFF security events not recorded | M/L → Low | Security events with fixed IDs; hashed session ID; masked IP | FT-08 |
+
+**Ranked (Phase 2):** T-41, T-47, T-49, T-39, T-43, T-42, T-51, T-44, T-37, T-31 (updated).
+
+### 10.5 Updates to existing threats
+
+| ID | Change | New status |
+|---|---|---|
+| **T-31** | **Rewritten.** Behind the BFF the API sees one IP. API `auth-strict` and `refresh` raised to 1000/min by configuration (FE-D2, G1); per-browser-IP limits move to the BFF (FR-F008). Residual: (a) direct calls to `127.0.0.1:8080` get 1000/min (lockout caps each account; S-D9 accepts locally); (b) the API's anonymous `general` bucket (60/min per IP) is shared by all BFF users, and 429 comes before 401, so the BFF never refreshes on an API 429; (c) `X-Forwarded-For` still ignored. Low locally; **High if deployed as is**. Before hosting: API v1.1 forwarded headers with `KnownProxies` = the BFF, then restore 10 and 30 | Partly mitigated; ST-09, FT-07 |
+| T-01 | Through the BFF unchanged (10/min per browser IP); directly against the API weaker (T-31) | Unchanged in BFF path |
+| T-06 | Links open SPA routes; FR-F025 and NFR-F43 remove tokens from the URL; `no-referrer` | Mitigated |
+| T-10 | SEC-2 parallel refresh solved by BFF single flight; benign race not adopted. Residual: crash window (T-45) | Mitigated; remove "strict refresh can log out parallel clients" from residual risks 7.1 |
+| T-11 | Now also covers the BFF (FT-01, FT-08) | Extended |
+| T-15 | XSS session riding raises Admin misuse likelihood; S-D10, S-D11 reduce it. MFA still a production item | New controls |
+| T-23 | Impact M → **H** (Valkey holds encrypted tokens); ACL `demoapi_bff`; negative ACL tests both ways | Re-rated; FT-06 |
+| T-25 | Cache flooding now also evicts sessions | Re-rated M/M; S-D12 |
+| T-26 | SPA routes with `email`/`token` in query reach BFF logs; same redaction applies | Extended; FT-08 |
+| T-28 | Adds BFF events (T-55) | Extended |
+| T-29 / T-30 | New ports 8081 and 8443 on `127.0.0.1`; no developer exception page in the BFF; Vite dev server has no CSP (Development only) | Extended; FT-09, FT-18 |
+| T-32 | CORS stays empty on API and BFF; **no CORS on the BFF is now a CSRF control**; startup test fails if a policy is added | Extended |
+| T-34 | Extended to npm, Node build image and `web` image (T-49) | Extended |
+| T-35 | Adds dev cert key and PFX to secret-scan scope (T-53) | Extended |
+
+### 10.6 New security requirements
+
+NFR-F29..F43 are recorded in [prd-frontend.md §7](../02-requirements/prd-frontend.md): origin allow-list (F29), session ID strength and payload binding (F30), conditional refresh save (F31), YARP constraints and header stripping (F32), `no-store` and `Clear-Site-Data` (F33), `returnUrl` rules (F34), XSS lint bans (F35), headers on every response (F36), BFF anonymous limit (F37), Admin idle/absolute/step-up (F38), no developer exception page and log/trace hygiene (F39), npm gates (F40), hashed cart key (F41), dev cert hygiene (F42), confirm-email URL cleanup (F43).
+
+### 10.7 Front-end security tests (FT-xx)
+
+This list is authoritative; test-strategy.md Phase 2 refers to it.
+
+| ID | Test | Threats |
+|---|---|---|
+| FT-01 | Token scan of every BFF response, cookie, browser storage and console | T-11, NFR-F09 |
+| FT-02 | Cookie flags and name; new ID on every sign-in; planted cookie not adopted; old session deleted and EP-06 called | T-37, T-38 |
+| FT-03 | CSRF matrix: no `X-CSRF`, wrong/missing/`null` Origin, other localhost port, `Sec-Fetch-Site: cross-site`, cross-site form post, `/bff/login` included → 403 before forwarding; GET on `/bff/logout` → 405; startup fails with `*` in origins; no CORS policy | T-39, T-40, T-32 |
+| FT-04 | Allow-list fuzz (unknown routes, wrong method, `%2F`, `%2e%2e`, `\`, `//`, case, trailing slash, `auth/refresh`, `/scalar`, `/openapi`, `/health/*`, stretch EPs) → 404 ProblemDetails; stripped headers verified at the fake API; API `Set-Cookie` removed; allow-list ⟷ `v1.json` meta-test | T-43 |
+| FT-05 | 20 parallel requests → exactly one EP-05; browser abort during refresh keeps the session consistent; logout during refresh → session stays deleted; replay once only after 401; no retry on EP-05 | T-45, T-10 |
+| FT-06 | Blob swapped between keys → 401; tampered blob → 401; Valkey down → 503; ACL both directions; rotated/missing DP keys → clean 401 | T-44, T-52, T-54, T-23 |
+| FT-07 | Auth bucket 11th → 429 + `Retry-After`; refresh 31st → 429; `X-Forwarded-For` ignored; IPv6 /64; anonymous limit; API 429 passed through without refresh | T-46, T-31 |
+| FT-08 | Log and trace scan after a full E2E run: no JWT, refresh token, cookie, password, reset/confirm token or unmasked email; security events present with hashed session IDs | T-47, T-26, T-55 |
+| FT-09 | Header snapshot on static, `/bff`, proxied, 404, 429, 500; `frame-ancestors 'none'`; no HSTS on HTTP/localhost; `index.html` `no-cache`; assets `immutable`; 0 CSP violations in E2E | T-48, T-29 |
+| FT-10 | Stored XSS payloads in product, customer, reasons, audit values, ProblemDetails `detail` render as text; 0 CSP violations and dialogs; NFR-F35 lint rules active | T-41 |
+| FT-11 | `returnUrl` table (absolute, `//evil`, `/\evil`, `javascript:`, encoded, `/api/...`, `/admin` as Customer) → role home | T-42 |
+| FT-12 | FakeTimeProvider: Admin idle 30 min → `session-ended` + EP-06; `/bff/user` and background refetch do not extend; 12 h absolute; Customers unaffected; recent sign-in for EP-16/EP-19 | T-51, T-15 |
+| FT-13 | Session end on change password, delete account, logout (API down too), logout-all → cookie expired, Valkey key gone, old cookie → 401 | T-37 |
+| FT-14 | After sign-out no cart or PII in storage; cart key is not the raw user ID; tampered cart → empty | T-50 |
+| FT-15 | CI: `npm ci` lockfile, `ignore-scripts`, audit prod and dev, `audit signatures`, SBOM, Trivy on web image, licence allow-list | T-49 |
+| FT-16 | Confirm and reset pages remove tokens from URL; no `Referer`; SPA route query not logged | T-47, T-06 |
+| FT-17 | `https` profile: cert files git-ignored and caught by gitleaks; WebKit sign-in works on `:8443`; no HSTS for localhost | T-53 |
+| FT-18 | BFF exception → ProblemDetails without headers or stack trace (Production and Development); EP-04 400/401/403/429 mapped without raw body | T-47, T-30 |
+| FT-19 | Proxied responses `no-store`; logout sends `Clear-Site-Data`; back button after sign-out shows no PII | T-50 |
+| FT-20 | ApiFreeze: no change under `src/` and frozen root files since tag `api-v1.0` | G4 |
+
+### 10.8 Standards mapping
+
+ASVS 5.0.0 Level 2 chapters now in scope: V3 Web Frontend Security (T-38..T-42, T-48), V7 Session Management (T-37, T-51), V4 API and Web Service (T-43), V11 Cryptography (T-44, T-52), V13 Configuration (T-53, T-23), V14 Data Protection (T-50), V15 Secure Coding and Architecture (T-49), V16 Security Logging and Error Handling (T-47, T-55).
+
+| OWASP Top 10:2025 | Phase 2 threats | Main controls |
+|---|---|---|
+| A01 Broken Access Control | T-39, T-40, T-42, T-43 | CSRF header + origin list, allow-list, `returnUrl` rules; API stays the enforcer |
+| A02 Security Misconfiguration | T-48, T-29, T-30, T-32 | Headers on every response, no CORS, localhost binding, no developer exception page |
+| A03 Software Supply Chain Failures | T-49 | NFR-F40, FT-15 |
+| A04 Cryptographic Failures | T-44, T-52, T-53 | Data Protection with bound payloads, key volume, dev cert hygiene |
+| A05 Injection | T-41 | React escaping, CSP, Trusted Types, lint bans |
+| A06 Insecure Design | T-31, T-45, T-51 | Single flight, conditional save, server-side idle and absolute limits |
+| A07 Authentication Failures | T-37, T-38, T-46 | Cookie flags, rotation on sign-in, per-IP limits, step-up |
+| A08 Software or Data Integrity Failures | T-49, T-50 | Lockfile, signatures, cart schema check |
+| A09 Security Logging and Alerting Failures | T-47, T-55 | NFR-F39, security events, FT-08 |
+| A10 Mishandling of Exceptional Conditions | T-45, T-54, T-52 | Fail closed on Valkey, 503 `upstream-unavailable`, no retry on EP-05 |
+
+### 10.9 Decisions (product owner, 2026-10-30)
+
+| ID | Decision |
+|---|---|
+| S-D9 | Direct API calls on `127.0.0.1:8080` keep the raised limits (local only, documented). Before any shared or hosted environment: do not publish the API port by default, and do the API v1.1 forwarded-headers work |
+| S-D10 | Admin absolute session lifetime 12 h, enforced in the BFF (amends FE-D4). Customers stay at 7 days sliding / 30 days absolute |
+| S-D11 | R2: EP-16 (assign Admin) and EP-19 (create Admin) need a sign-in within the last 15 minutes; BFF returns 401 `reauth-required` |
+| S-D12 | One Valkey container for sessions and product cache; size `maxmemory` with headroom; metric on unexpected session ends |
+| S-D13 | Trusted Types report-only during the CSP spike, then enforced if Radix and React work |
+
+### 10.10 Residual risks (accepted 2026-10-30)
+
+| Risk | Why accepted | Review |
+|---|---|---|
+| XSS can still act as the victim within the step-up rules | CSP, Trusted Types and no HTML rendering lower the likelihood | Before production: DAST and a fresh-context SPA review |
+| Direct API calls get 1000/min auth limits (S-D9) | `127.0.0.1` only; lockout per account | API v1.1 forwarded headers |
+| A crash between EP-05 and the save signs the user out | Rare; fails safe | More than one BFF instance |
+| Valkey restart or eviction signs everyone out | No persistence by design (S-D12) | Hosting |
+| Data Protection keys not encrypted at rest locally | Local only | Hosting: Blob + Key Vault |
+| A stolen cookie works until idle, absolute or logout ends it | No device binding without an API change | Production: consider DPoP or device signals |
+| Development reset-password log line contains the unmasked email in the URL (`FakeEmailSender`) | Development only; API frozen | API v1.1 |
+
+### 10.11 Open questions
+- [ ] Should R2 Admin screens offer CSV or print exports of customer PII? Not in scope today; would need masking and audit rules.
+- [ ] Security sign-off for Phase 2: product owner alone, or also a client security owner if the template is reused?

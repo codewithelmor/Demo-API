@@ -601,3 +601,244 @@ The PRD [§14 DoR](../02-requirements/prd.md) and [§15 DoD](../02-requirements/
 - [Microsoft Learn: About default processes and process templates](https://learn.microsoft.com/en-us/azure/devops/boards/work-items/guidance/choose-process)
 - [Microsoft Learn: Configure and pay for parallel jobs (free grant, request form)](https://learn.microsoft.com/en-us/azure/devops/pipelines/licensing/concurrent-jobs?view=azure-devops)
 - [Microsoft Learn: Azure Pipelines overview (free tier 1,800 min/month)](https://learn.microsoft.com/azure/devops/pipelines/overview)
+
+---
+
+## 10. Phase 2: web front end (approved 2026-10-30)
+
+Inputs: [prd-frontend](../02-requirements/prd-frontend.md) · [front-end stories](../02-requirements/user-stories/04-frontend.md) · [design profile](../03-design/design-profile.yaml) · [wireframes](../03-design/ux/wireframes.md) · [ADR-0015](../04-architecture/adr/0015-web-front-end-bff.md) · [frontend-architecture](../04-architecture/frontend-architecture.md) · [threat model §10](../05-security/threat-model.md) · [test strategy, Phase 2](../07-quality/test-strategy.md) · [review 2026-10-27](../07-quality/review-2026-10-27.md)
+
+### 10.1 Approach (changes to §1 only)
+
+- **Kanban stays as in §1.** One developer works with Claude. Each PR holds one story and references `AB#<id>`. Review WIP stays at 2. The Expedite lane stays.
+- **Two lanes:**
+  - The **Build** lane has In progress WIP 1.
+  - The **Design** lane has In progress WIP 1. In this lane, `product-designer` runs the Figma APPLY batches; the developer's work is reviewing them.
+  - Azure DevOps sets WIP per column, not per lane. So the In progress limit becomes 2, with the rule "at most one card per lane".
+- **Phase 1 lesson:** on 2026-10-27 the agents built the whole API in about one day. But no item reached Closed, the pipeline was not proven on Azure, and `v1.json` was incomplete. Code is fast; closing to the DoD is the real bottleneck. In this plan, "done" means Closed, and each Epic records its actual days (§6 Epic Done; this was skipped in Phase 1).
+- **Spikes:** each spike is time-boxed to 0.25-0.5 days, at most 2.5 days in total. The result goes into ADR-0016 or ADR-0017, or into the frontend-architecture doc.
+- **Reviews (§1 table, extended):**
+  - `dotnet-security-reviewer` reviews every PR under `web/DemoApi.Bff/Session|Proxy|Security`.
+  - `react-security-reviewer` reviews SPA PRs that touch auth, storage, `returnUrl` or rendering of server text.
+  - `devils-advocate` runs at the FE-S0b exit and at the R2 go/no-go.
+  - The `design-qa` skill runs before each UI story is Done.
+- **Never quarantine (added to §5):** FT-01..FT-07, FT-12, FT-13, FT-14, session-ending specs and the place-order double-submit spec. The cap of 3 quarantined tests is shared across the whole repo.
+
+### 10.2 Roadmap and milestones
+
+| Horizon | Scope | Outcome |
+|---|---|---|
+| **Now** (firm) | P2-001 Phase 1 baseline + `api-v1.0` tag; FE-S0a walking skeleton; FE-S0b BFF hardening; Figma R1 (design lane) | Secure BFF on one origin, 0 tokens in the browser, full pipeline incl. E2E, R1 frames approved |
+| **Next** (outcomes) | FE-R1 Customer portal, FE-RelOps | A new customer registers and places an order unaided in ≤ 5 min (G1); R1 meets the screen DoD |
+| **Later** (outcomes) | FE-R2 Admin back office (after a go/no-go); API v1.1 only on a product-owner decision | Admins stop using Scalar for daily work |
+
+| # | Milestone | Exit check the product owner can see |
+|---|---|---|
+| M-F0 | Baseline frozen | Phase 1 merged to `main` through the branch policy, Azure pipeline green, Bug #169 fixed and `v1.json` re-exported, tag `api-v1.0` on `main`; Figma connected and kit duplicated |
+| M-F1 | FE-S0a done | Fresh clone → `docker compose up -d` → sign in at `http://localhost:8081` → product list through the BFF → sign out. Pipeline green on `main`: ApiFreeze, Spa, BFF tests, E2E (Chromium) with FT-01 and axe fixtures |
+| M-F2 | FE-S0b done | FT-02..FT-07, FT-09, FT-13, FT-15, FT-18, FT-19, FT-20 green; BFF security review has no open High; Foundation perf baseline in `perf-results.md`; traceability artifact produced; ADR-0016/0017 and amendments merged |
+| M-F3 | R1 design approved | All R1 frames linked from US-F020..F035; token diff vs code closed |
+| M-F4 | R1 released | Test strategy P2.6 R1 gates, incl. **G1: 3 of 3 testers ≤ 5 min** and NFR-F04 p75 |
+| M-F5 | FE-RelOps done | Fresh clone incl. `web` in ≤ 15 min, 0 manual steps; runbook and before-production register updated |
+| M-F6 | R2 released | P2.6 R2 gates incl. FT-12 step-up and NFR-F27 |
+
+### 10.3 Estimation
+
+- Same method as §2: XS 1, S 2, M 4, L 8; best = likely × 0.7; worst = likely × 1.6 (× 1.8 for FE-S0a/FE-S0b, which carry the BFF, cookie, CI and toolchain unknowns).
+- **Planning factor 0.25 day per point** (Phase 1 used 0.2). UI work has more human-paced checks: screen-reader passes, design QA, browsers, usability testers. The factor matches the product-designer's own day estimates for Figma (20 pts ≈ 4-5 days). Recalibrate at the FE-S0a exit from Closed items only.
+- **Sensitivity** for the 278 critical-path points: 0.2 → 56 days; 0.25 → 70; 0.5 (PRD size assumption) → 139.
+- **Contingency:** no time buffer. Scope is the buffer: R2 Should/Could items and the cut lists below. R2 is also a separate go/no-go.
+
+| Slice (Epic) | Points | Best | Likely | Worst | **Time-box (days)** | Early-warning cut | Hard cut |
+|---|---|---|---|---|---|---|---|
+| FE-S0a Walking skeleton (E9) | 61 | 11 | 15 | 27 | **15-17** | day 19 | day 30 |
+| FE-S0b BFF hardening and harness (E10) | 58 | 10 | 14.5 | 26 | **14-17** | day 19 | day 28 |
+| FE-Design R1 (E11, design lane) | 20 | 3.5 | 5 | 8 | **4-5** (parallel) | day 7 | day 8 |
+| FE-R1 Customer portal (E12) | 67 | 12 | 17 | 27 | **17-19** | day 21 | day 34 |
+| FE-RelOps (E14) | 9 | 1.6 | 2.3 | 3.6 | **2-3** | day 5 | day 4 |
+| FE-Design R2 (E11, design lane) | 14 | 2.5 | 3.5 | 5.6 | **3-4** (parallel) | day 6 | day 6 |
+| FE-R2 Admin back office (E13) | 83 | 14.5 | 21 | 33 | **21-24** | day 26 | day 42 |
+| **Critical path (design parallel)** | 278 | 49 | 70 | 117 | **69-80** | | |
+| Through R1 + RelOps | 195 | 34 | 49 | 84 | **48-56** | | |
+| API v1.1 (E15, unscheduled) | 23 | – | ~6 | – | none | | |
+
+If the design lane is not approved (strict WIP 1): add 7-9 days (R1 design + R2 design on the critical path).
+
+**Cut rule:** same two levels as §2. More than 2 days over the upper bound: apply that slice's cut list. 2× the lower bound: apply the kill rules in 10.5.
+
+### 10.4 Slices
+
+#### FE-S0a Walking skeleton (E9)
+| Part | Content |
+|---|---|
+| Goal | Prove the whole chain on one thin path: compose → SPA on :8081 → BFF sign-in → product list through YARP → sign out → pipeline green incl. E2E |
+| Stories | US-F001, US-F002, US-F004, US-F006, US-F009 |
+| Enablers | P2-001 baseline gate and `api-v1.0`; `web/` scaffold; BFF host core (Valkey ticket store, cookie, DP keys); SPA API client |
+| Spikes | SP-F4 npm overrides on TS 6.0.3 · SP-F5 YARP 2.3.0 · SP-F1 `__Host-` cookie on localhost · SP-F2 `Location` headers (≤ 1.75 d) |
+| Pipeline | ApiFreeze (FT-20), Spa job, E2E stage (Chromium full + Firefox `@cross-browser`) |
+| Test harness | BFF test project, Playwright projects + `storageState` + `readEmailLink`, Vitest/MSW, FT-01 token-scan fixture, axe fixture |
+| Exit | M-F1; ADR-0016 merged; spike results written |
+| Time-box | **15-17 days.** Checkpoints: day 7, sign-in through the BFF works in compose; day 11, E2E skeleton green in the pipeline. If day 11 is missed, the early-warning rule applies |
+| Cut list | Firefox in PR E2E → Chromium only until S0b; 360 px project → R1; `readEmailLink` → R1 (skeleton uses the seed Admin and one customer created through the API) |
+
+#### FE-S0b BFF hardening and test harness (E10)
+| Part | Content |
+|---|---|
+| Goal | Make the BFF production-grade before any real screen: single-flight refresh, CSRF, rate limits, headers, session binding; finish the harness |
+| Stories | US-F003, US-F005, US-F007, US-F008 |
+| Enablers | BFF hardening (NFR-F15, F30, F32, F33, F36, F39); health endpoints; `https` profile + dev cert; design tokens from `design-profile.yaml`; SP-F3 CSP/Trusted Types |
+| Tests and docs | FT-02..FT-07, FT-09/FT-18, FT-13/FT-19, FT-15 supply-chain gates; meta-tests (allow-list ⟷ `v1.json`, slug coverage, admin import rule); traceability script; ADR-0017; ADR 0008/0010/0012/0013 amendments; Foundation perf baseline (Q-D11); BFF security review gate |
+| Exit | M-F2 |
+| Time-box | **14-17 days.** Order: hardening → US-F003 → FT-05 (`--repeat-each=10`) → review gate. Checkpoint day 8: US-F003 and FT-05 Closed |
+| Cut list | k6 part of the perf baseline → pre-R1 run; traceability script → R1 week 1 (it only warns on PRs). Never cut: FT-01..FT-07, FT-13, the review gate |
+
+#### UI design in Figma (E11, design lane)
+| Part | Content |
+|---|---|
+| R1 | Connect Figma + product owner duplicates the Obra Community kit (needed by FE-S0a day 3) → batch 0 inspect → 1 foundations → 2 components/patterns → 3 R1 screens 1-6 → 4 R1 screens 7-12 + prototype → design review. **Batches 0-2 run during FE-S0a; batches 3-4 during FE-S0b.** R1 frames are needed by FE-R1 day 1 |
+| R2 | Batches 5-7 (AD-0..AD-20, idle and step-up dialogs) + review, run during FE-R1, after P2-089 if possible |
+| Cut list | Prototype in batch 4; Dark frames (Dark variables kept); for R2 Should screens, build from the wireframes and run design QA only |
+| Fallback | If Figma is not connected by FE-S0b day 5: build R1 from the wireframes and the design profile, then run design QA against frames when they exist (product-owner approval needed: this breaks the "Figma frame linked" DoR) |
+
+#### FE-R1 Customer portal (E12)
+| Part | Content |
+|---|---|
+| Goal | All 16 Customer stories at the screen DoD (prd-frontend §10) |
+| Stories | US-F020..US-F035 (all Must) |
+| Enablers and tests | Admin idle 30 min and absolute 12 h in the BFF (FT-12 part 1); Light/Dark switch; SY-4 banner; Trusted Types enforced; FT-08, FT-10, FT-14, FT-16 |
+| Release gates | Pre-R1 Web Vitals + k6; G1 usability (3 testers); manual a11y pass; WebKit `https` + Firefox full + 360 px + device smoke; design QA pass; security review (SPA + BFF delta); R1 sign-off with Phase 1 regression on the release commit |
+| Order | Access pages → catalog → cart → place order → my orders → account → FT-08 → gates |
+| Time-box | **17-19 days.** Checkpoint day 9: US-F029 Closed |
+| Cut list (in this order) | (1) P2-075 Light/Dark switch → Light only; (2) P2-077 Trusted Types stays report-only (S-D13 allows); (3) P2-076 SY-4 banner (Should); (4) Firefox full and 360 px → pre-release only. The 16 stories are Must; cutting one needs product-owner approval. G1 is a blocking gate |
+
+#### FE-RelOps (E14), right after R1
+README/CLAUDE.md for `web`, runbook additions, before-production register update, TemplateStrip removes `web/`, timed fresh clone. **2-3 days.** Then the **R2 go/no-go**: re-forecast from actual days per point, `devils-advocate` pass, product-owner decision.
+
+#### FE-R2 Admin back office (E13)
+| Part | Content |
+|---|---|
+| Entry | Go/no-go passed; **P2-089 R2 ACs numbered** (DoR; `needs-ac` removed); batch 5 frames approved |
+| Stories | US-F036, US-F050..US-F071 (Must 34 pts, Should 22, Could 2) |
+| Enablers | Idle warning dialog (UX-D4); step-up for EP-16/EP-19 (S-D11, FT-12 extension); visual-regression decision spike (Q-D10, optional) |
+| Gates | FT-10 extension; R2 Vitals + NFR-F27; a11y pass at 1024 px; design QA; security review of Admin areas; R2 sign-off |
+| Time-box | **21-24 days.** Checkpoint day 11: products and customers Must stories Closed |
+| Cut list (in this order) | US-F066 (Could) → US-F071 → US-F063 → US-F062 → US-F065 → US-F059 → US-F057 → US-F068 + US-F070 (if both are cut, **remove EP-16, EP-17 and EP-19 from the BFF allow-list** instead of dropping step-up) → US-F036 → P2-090. Must stories stay |
+
+#### API v1.1 (E15), deferred and unscheduled
+Forwarded headers + restore API limits (G1, T-31, S-D9), G2 anonymous catalog, G3 product names on order lines, G11 email change, masked email in the reset-link log, release mechanics (`allowApiChanges`, tag `api-v1.1`, regenerate `v1.json`/`schema.d.ts`/Postman). G8, G9 and G10 are the existing stretch items #164, #167 and #165, re-parented here. No time-box; scheduling it needs a product-owner decision that lifts the freeze. **Required before any shared or hosted environment** (S-D9).
+
+### 10.5 Kill and pivot rules
+1. **FE-S0b reaches its hard cut** without FT-01 and FT-05 green: stop screen work. Review ADR-0015 with `react-architect` (simplify, for example in-memory sessions or no Admin sessions) before going on.
+2. **FE-R1 reaches its hard cut:** release R1 with the stories that meet the DoD and skip R2. Admins keep Scalar; R2 is optional for a POC.
+3. **G1 fails** (any tester > 5 min): fix the top 3 findings and re-run once. R2 does not start until G1 passes or the product owner accepts the result.
+4. **CI minutes run out:** keep the PR E2E at Chromium only; move Firefox and 360 px to local before-release runs; drop the nightly first.
+5. If the quarantine cap is reached, or E2E takes more than 15 minutes: no new E2E specs until it is back under the cap.
+
+### 10.6 Dependencies and critical path
+
+```mermaid
+flowchart LR
+  G["P2-001 Phase 1 baseline<br/>merge, pipeline, Bug #169, tag api-v1.0<br/>2-4 d (Phase 1 work)"] --> A["FE-S0a walking skeleton<br/>15-17 d"]
+  F0["P2-047 Figma connect + kit<br/>(product owner)"] --> D1["Design R1 batches 0-4 + review<br/>4-5 d, design lane"]
+  A --> B["FE-S0b BFF hardening + harness<br/>14-17 d"]
+  D1 -. "frames by R1 day 1" .-> C
+  B --> C["FE-R1 Customer portal<br/>17-19 d"]
+  C --> R["FE-RelOps<br/>2-3 d"]
+  R --> N{"R2 go / no-go<br/>re-forecast"}
+  N -- go --> E["FE-R2 Admin back office<br/>21-24 d"]
+  N -- stop --> S(["Phase 2 ends at R1"])
+  AC["P2-089 R2 ACs numbered"] -.-> E
+  D2["Design R2 batches 5-7<br/>3-4 d, design lane"] -.-> E
+  V["API v1.1 (unscheduled)<br/>product-owner decision"]
+```
+
+| Slice | Critical chain |
+|---|---|
+| FE-S0a | P2-001 → SP-F4 → scaffold → SP-F1/SP-F5 → BFF host core → sign-in → proxy → shell → Playwright + FT-01 → E2E stage green |
+| FE-S0b | Hardening → US-F003 → FT-05 → review gate; SP-F3 → tokens → US-F007 |
+| FE-R1 | Batch 3 → access pages → catalog → cart → place order → orders → account → FT-08 → gates → sign-off |
+| FE-R2 | P2-089 + batch 5 → shell + step-up → products → orders → reports → users → gates |
+
+| Dependency | Type | Needed by | Owner |
+|---|---|---|---|
+| Phase 1 merged to `main`, Azure pipeline green, Bug #169 fixed, `v1.json` re-exported, tag `api-v1.0` | Baseline | FE-S0a day 1 | Developer / product owner |
+| Board rename checked (root area path, team name, URLs); `Web` area nodes created | Tracker | Before item import | Product owner (UI) |
+| Figma MCP connected; Obra Community kit duplicated; two files created | Access | FE-S0a day 3 | Product owner |
+| CI minutes: project public or private (free tier 1,800 min/month if private); Docker and Playwright browsers on the hosted agent | Licence / tooling | FE-S0a day 8 (E2E stage) | Product owner |
+| Node 26 LTS move (after 2026-11-04), npm overrides (SP-F4) | Tooling | FE-S0a day 1 | Developer |
+| Valkey ACL user `demoapi_bff` in `secrets-init` | Environment | FE-S0a day 3 | Developer |
+| 3 usability testers who did not build the app | People | Booked by FE-S0b end; used in the last R1 week | Product owner |
+| macOS/iOS device for VoiceOver + Safari and a phone for the device smoke (the developer works on Windows) | Hardware | R1 release gates | Product owner |
+| R2 ACs numbered (P2-089) | Requirements | R2 day 1 | `requirements-analyst` |
+| Product-owner time: design reviews (30 min per batch), slice demos (60 min) | People | Each batch / slice end | Product owner |
+
+### 10.7 Risk register (Phase 2)
+
+| ID | Risk | L/I | Owner | Trigger | Response |
+|---|---|---|---|---|---|
+| FD1 | API frozen on a flawed baseline (incomplete `v1.json`, unmerged branch, pipeline never run on Azure) | H/H | PO | `api-v1.0` tagged before P2-001 is Closed | P2-001 gate; otherwise fixes go only through API v1.1 |
+| FD2 | 312 points too much for one developer; planning factor unproven | H/H | PO | FE-S0a actual > 0.3 day per point (Closed items) | Recalibrate at FE-S0a exit; R2 go/no-go; cut lists |
+| FD3 | BFF security defects (single flight, CSRF, session binding) | M/H | Dev | FT-05 fails in a loop; review High | Never quarantine; `--repeat-each=10`; review gates P2-046, P2-087 |
+| FD4 | Design blocks the build (Figma not connected, manual kit step, agent Figma limits) | M/M | PO | P2-047 open on FE-S0a day 5; batch 3 not Closed at R1 start | Design lane; FE-S0 needs no Figma; wireframe fallback (10.4) |
+| FD5 | CI minutes: Spa + BFF + E2E (≤ 12 min) + API stages per PR | H/M | PO | Usage > 70% of the monthly minutes | Path conditions: skip API test stages on `web/`-only PRs (ApiFreeze proves `src/` unchanged); drop the nightly; self-hosted agent |
+| FD6 | E2E slow or flaky (compose in CI, log polling for email links) | M/H | Dev | > 10 min at end of R1; 3 quarantined repo-wide | TS P2.5 rules; move specs down to component level |
+| FD7 | G1 testers or Mac/iOS device not available | M/M | PO | Not booked 2 weeks before R1 | Book during FE-S0b; fallback: NVDA + Firefox only, recorded gap accepted by the product owner |
+| FD8 | Young toolchain (TS 6.0.3 vs typescript-eslint, overrides, Vite 8, React Router 8) | M/M | Dev | SP-F4 or SP-F5 fails | Spikes first; exact pins; `min-release-age=7` |
+| FD9 | Board rename drift (`Demo-API` in map, URLs, team, CLAUDE.md) | H/L | Dev | Create fails on an area path | `azdo-boards-manager` verifies with read tools before APPLY |
+| FD10 | Requirement doc inconsistencies break traceability (MVP 24 vs 25 stories; R2 table ACs) | H/L | Dev | Traceability script errors | Fix the count; P2-089 |
+| FD11 | API-gap workarounds hurt UX (G3 up to 50 lookups; G5 shares the 4-report limit) | M/M | Dev | Order detail > NFR-F04; 429 on Admin lists | Session cache; NFR-F27 limit; API v1.1 G3 |
+| FD12 | Key person and Claude usage limits (D2, D3 carry over) | H/M | PO | As §4 | As §4 |
+
+### 10.8 Backlog structure (additions to §5)
+
+- **Hierarchy:** one Epic per slice. Features group the work inside each slice. Plan IDs are `P2-xxx`, E9-E15 and F9.1-F15.1, written as the first line of each description.
+- **Area paths (new):**
+  - `<root>\Web`: SPA, harness, pipeline, front-end ADRs.
+  - `Web\Bff`, `Web\Customer`, `Web\Admin`, `Web\Design`.
+  - `<root>` is expected to be `Demo-App` after the rename; verify it.
+  - The template strip deletes `web/`, so "Area under Web" shows exactly what the template does not inherit.
+  - Release and docs items go to `Delivery`. API v1.1 items go to the existing areas.
+- **Tags (new):**
+  - Slice: `FE-S0a`, `FE-S0b`, `FE-Design`, `FE-R1`, `FE-R2`, `FE-RelOps`, `API-v1.1`.
+  - Kind: `design`, `design-qa`, `a11y`, `usability`.
+  - Trace: `US-F0xx` (48), `FT-01`..`FT-20`, and `gap-G1`, `gap-G2`, `gap-G3`, `gap-G8`, `gap-G9`, `gap-G10`, `gap-G11`.
+  - `FR-Fxxx` tags are not needed: every FR-F has a US-F story. NFR references go in the Source text.
+  - Reused tags: `enabler`, `spike`, `security-followup`, `security-test`, `test-infra`, `ci`, `docs`, `perf`, `review`, `template`, `should`, `could`, `optional`, `needs-ac`, `ST-09`, `ST-14`.
+- **`needs-ac`:** the 23 R2 US-F stories and 3 API v1.1 change items. Removed by P2-089, or when an API v1.1 item is scheduled.
+
+### 10.9 Definition of Ready and Done (additions to §6)
+
+**Ready:**
+- The §6 rules apply.
+- UI stories also need:
+  - the Figma frame linked (US-F001..F009 and non-UI items are exempt);
+  - numbered ACs (no `needs-ac`);
+  - the EP-xx and ProblemDetails slugs listed;
+  - the source design batch Closed.
+- Any story that uses `schema.d.ts` needs P2-001 Closed.
+
+**Done:**
+- [prd-frontend §10](../02-requirements/prd-frontend.md) screen DoD plus [test strategy P2.7](../07-quality/test-strategy.md): design QA with no High finding, tests tagged `@US-F0xx-ACn`, keyboard pass.
+- The §6 board rules apply.
+- **Epic Done** = test strategy P2.6 gates (R1/R2), demo held, **actual days written in the Epic**.
+
+### 10.10 Delivery decisions (approved by the product owner 2026-10-30)
+| ID | Decision |
+|---|---|
+| DL-D7 | Finish Phase 1 first (P2-001): merge `feature/build-orders-api` through the PR policy, prove the pipeline green, fix Bug #169 (OpenAPI metadata only, no behaviour change) and re-export `v1.json`, triage #170-#172; then tag `api-v1.0` and start the ApiFreeze |
+| DL-D8 | Foundation split into E9 FE-S0a walking skeleton and E10 FE-S0b BFF hardening and harness |
+| DL-D9 | Parallel design lane (Figma), WIP 1 per lane; board swimlane `Design`, In progress WIP 2 |
+| DL-D10 | Planning factor 0.25 day per point; recalibrate at FE-S0a exit; R2 is a go/no-go after R1 + RelOps |
+| DL-D11 | New area subtree `Web\{Bff, Customer, Admin, Design}`; stretch items #164, #165, #167 re-parented under API v1.1 (E15) |
+
+### Assumptions (Phase 2)
+- Assumption: one developer at 100%. The planning factor is 0.25 day per point. Figma work runs in a parallel lane.
+- Assumption: Figma batch 3 = shell, AN-1..AN-8, CU-1, CU-2; batch 4 = CU-3..CU-10, SY-1..SY-5 (`product-designer` to confirm).
+- Assumption: the hosted Ubuntu agent runs `docker compose` and Playwright Chromium/Firefox within the free minutes.
+- Assumption: Azure DevOps renamed the root area and iteration nodes with the project, and the team is still `Demo-API Team`. Not verified.
+
+### Open questions (Phase 2)
+- [ ] MVP story count: US-F001..F009 + US-F020..F035 = **25**, but 04-frontend.md and test strategy P2.6 say 24.
+- [ ] Is the Azure DevOps project public or private (minutes)? Has the Phase 1 pipeline ever run on Azure?
+- [ ] Who are the 3 G1 testers? Is a Mac/iOS device available?
+- [ ] Phase 2 security sign-off: product owner alone, or also a client security owner (TM §10.11)?

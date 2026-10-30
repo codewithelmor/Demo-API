@@ -1,11 +1,11 @@
 # Orders API (working name) - Product Summary
 
-Last updated: 2026-10-24
+Last updated: 2026-10-30
 Mode: Standard (confirmed 2026-10-24)
 
 ## Snapshot
 - **Problem:** Staff need one secure back-end API to manage products, customers, and orders; customers need safe self-service access to their own data, including placing their own orders.
-- **Users:** Admins (staff) and Customers. API only, no UI in this phase.
+- **Users:** Admins (staff) and Customers. Phase 1 was API only. Phase 2 (from 2026-10-30) adds a React + TypeScript web front end: Customer portal first, then an Admin back office. API source code stays unchanged; only configuration (CORS, compose) may change.
 - **Client / sponsor:** internal proof of concept
 - **Team, budget, deadline:** one developer working with Claude; no fixed deadline; delivered in slices.
 - **Stage:** Proof of concept built with production-grade practices.
@@ -14,8 +14,8 @@ Mode: Standard (confirmed 2026-10-24)
 ## Links
 - **Tracker:** Azure DevOps Boards (chosen 2026-10-24); run `azdo-setup` before first push
 - **Linear project:** not used yet
-- **Azure DevOps:** org `codewithelmor`, project `Demo-API` (new, Agile process; chosen 2026-10-27). MCP servers `ado-read` / `ado-write` added to this repo's local scope 2026-10-27. Board created 2026-10-27: 168 work items ([azdo-map.md](azdo-map.md)), https://dev.azure.com/codewithelmor/Demo-API/_boards/board/t/Demo-API%20Team/Stories
-- **Figma files:** not used (API-only product)
+- **Azure DevOps:** org `codewithelmor`, project `Demo-App` (renamed from `Demo-API` on 2026-10-30 by the product owner; Agile process). MCP servers `ado-read` / `ado-write` added to this repo's local scope 2026-10-27. Board created 2026-10-27: 168 work items (+165 Phase 2 items on 2026-10-30) ([azdo-map.md](azdo-map.md)), https://dev.azure.com/codewithelmor/Demo-App/_boards/board/t/Demo-App%20Team/Stories (team renamed to `Demo-App Team`)
+- **Figma files:** used for the front end (phase 2); file not created yet
 
 ## Phase status
 | Phase | Status | Documents |
@@ -31,6 +31,16 @@ Mode: Standard (confirmed 2026-10-24)
 | 9. Quality | Done (2026-10-27) | [test strategy](07-quality/test-strategy.md) |
 | 10. Release | Not started (local Docker only; light) | |
 | 11. Operations | Not started (light) | |
+| **Phase 2: web front end** | | |
+| 1. Concept addendum | Done (2026-10-30) | [concept.md, Phase 2 addendum](01-concept/concept.md) |
+| 2. Requirements (FE) | Done (2026-10-30) | [prd-frontend](02-requirements/prd-frontend.md), [front-end stories](02-requirements/user-stories/04-frontend.md) (MVP 25 stories, R2 23 Admin stories, API gaps G1-G14) |
+| 3. Research (FE) | Skipped (users and tasks known from Phase 1) | |
+| 4. UX design (FE) | Done (2026-10-30) | [information architecture](03-design/ux/information-architecture.md), [user flows](03-design/ux/user-flows.md), [wireframes](03-design/ux/wireframes.md) |
+| 5. UI design (FE) | Planned (2026-10-30); Figma work deferred to a board story (Figma not connected) | [design profile](03-design/design-profile.yaml) |
+| 6. Architecture (FE) | Done (2026-10-30) | [ADR-0015](04-architecture/adr/0015-web-front-end-bff.md), [frontend-architecture](04-architecture/frontend-architecture.md) |
+| 7. Security (FE) | Done (2026-10-30) | [threat model §10](05-security/threat-model.md) (T-37..T-55, NFR-F29..F43, FT-01..FT-20) |
+| 9. Quality (FE) | Done (2026-10-30) | [test strategy, Phase 2](07-quality/test-strategy.md) |
+| 8. Delivery (FE) | Done (2026-10-30) | [delivery plan §10](06-delivery/delivery-plan.md), [board preview Phase 2](06-delivery/azdo-preview-phase2.md) (165 items, 335 SP) |
 
 Planned order: Concept → Requirements → Architecture → Security → Quality → Delivery → Release (light) → Operations (light).
 
@@ -75,6 +85,18 @@ Planned order: Concept → Requirements → Architecture → Security → Qualit
 | 2026-10-27 | Quality decisions Q-D1..Q-D6: test pyramid (~200 unit, ~350 integration/API, ~40 serial, ~20 architecture rules); generated authz matrix from `EndpointDataSource`; tokens minted for non-auth tests; no CI retries, max 3 quarantined; coverage as warning; NFR-02 recorded, NFR-01 blocks; branch policy on `main`; k6 twice (end S1b, after S4) | Test strategy by qa-strategist | [test strategy §10](07-quality/test-strategy.md) |
 | 2026-10-27 | Azure DevOps org `codewithelmor`, new project `Demo-API`; board first, then S1a build | Product owner choice ("Both, board first") | |
 | 2026-10-27 | Delivery decisions DL-D1..DL-D6: Kanban, WIP 1; time-boxes S1a 16-18, S1b 24-28, S2 17-20, S3 13-15, S4 7-8, template + rel/ops 6-9 days (83-98 total); Agile process, Epic per slice, no iterations; Azure Repos; 168-item preview | delivery-planner | [delivery plan §9](06-delivery/delivery-plan.md) |
+| 2026-10-30 | Phase 2: add a React + TypeScript web front end; no API source changes (configuration and compose changes allowed) | Product owner request | |
+| 2026-10-30 | Sign-in through a small, separate ASP.NET Core BFF host (YARP); tokens stay on the server, the browser gets an HttpOnly cookie | The API returns refresh tokens in the JSON body; keeps tokens out of JavaScript without changing the API | |
+| 2026-10-30 | Audience: Customer portal first, then Admin back office | Product owner choice | |
+| 2026-10-30 | UI: Figma used; shadcn/ui + Tailwind | Product owner choice | |
+| 2026-10-30 | Azure DevOps project renamed `Demo-API` → `Demo-App` | Product owner | azdo-map.md |
+| 2026-10-30 | Front-end decisions FE-D1..FE-D5: sign in to browse (no anonymous catalog); API auth/refresh limits raised by config, real limits enforced per browser IP in the BFF; one SPA with role-gated `/admin`; sessions follow the API plus 30-min Admin idle timeout; API gaps go to an unscheduled "API v1.1 (deferred)" epic | requirements-analyst, product owner | [prd-frontend §14](02-requirements/prd-frontend.md) |
+| 2026-10-30 | UX decisions UX-D1..D5: cart keeps price seen; cart survives session end; "Delete account" wording; Admin idle warning 2 min before; placeholder name "Orders Shop". Layout: top bar (Customer), sidebar (Admin), `/` switches by role, cart = checkout | ux-designer, product owner | [user flows](03-design/ux/user-flows.md) |
+| 2026-10-30 | Architecture FA-D1..D5: Vite SPA served by ASP.NET Core BFF (YARP) on one origin; sessions in Valkey (encrypted); single-flight refresh, never retried or cancelled; `X-CSRF` + Origin check; HTTP :8081 + opt-in HTTPS profile for Safari; `web/` folder outside `src/`; `api-v1.0` tag + ApiFreeze stage; TypeScript 6.0.3; MPL-2.0 dev-only exception (axe) | react-architect, product owner | [ADR-0015](04-architecture/adr/0015-web-front-end-bff.md) |
+| 2026-10-30 | Security S-D9..S-D13: direct API calls keep raised limits locally; Admin absolute session 12 h (amends FE-D4); R2 step-up (sign-in ≤ 15 min) for EP-16/EP-19; one Valkey for sessions and cache; Trusted Types report-only then enforced. ADR-0015 amendment 1 (origin list, session binding, conditional refresh save) | security-privacy-reviewer, product owner | [threat model §10](05-security/threat-model.md) |
+| 2026-10-30 | Quality Q-D7..Q-D11: E2E on every PR (Chromium full + Firefox subset); BFF↔API via Playwright request project; E2E data through the API, email links from logs; no visual regression in R1; Web Vitals lab p75 at milestones | qa-strategist, product owner | [test strategy Phase 2](07-quality/test-strategy.md) |
+| 2026-10-30 | UI design: Obra shadcn/ui Community kit (MIT), neutral base + blue placeholder primary, custom success/warning/info tokens, contrast fixes, Light/Dark only. Figma work runs later as a board story (Figma not connected) | product-designer (PLAN), product owner | [design profile](03-design/design-profile.yaml) |
+| 2026-10-30 | Delivery DL-D7..DL-D11: finish Phase 1 first (merge, green pipeline, fix #169 OpenAPI metadata, tag `api-v1.0`); E9 skeleton + E10 hardening split; parallel Figma design lane (WIP 1 per lane); 0.25 day/pt, R2 go/no-go after R1; new `Web` area subtree, #164/#165/#167 moved under API v1.1. 7 Epics E9-E15, 165 items, 335 SP; R1 + RelOps 48-56 days | delivery-planner, product owner | [delivery plan §10](06-delivery/delivery-plan.md) |
 
 ## Open-question answers (section 9 of the brief)
 | # | Question | Answer |
@@ -115,5 +137,6 @@ Planned order: Concept → Requirements → Architecture → Security → Qualit
 - Section 9 answers were chosen by Claude on the product owner's instruction ("use whichever is best"); the product owner may override any of them.
 
 ## Next step
-Board done (168 items). Start S1a with `build-app-builder` (E1, work item #1); commits use `AB#<id>`. Earlier plan text below.
-`azdo-boards-manager`: run `azdo-setup` (Agile, area paths, columns, bug setting; needs the Azure DevOps org and project name) and show the 168-item preview from delivery-plan §5; create items only after approval. Then Release/Operations light. Push stories to Azure DevOps Boards after Delivery planning (`azdo-setup` first).
+Phase 2 (web front end) is planned and its board entries are applied (2026-10-30): 7 Epics #173-#179, 26 Features #180-#205, 132 Stories #206-#337 (335 SP), 161 predecessor links, and #164/#165/#167 moved under F15.1 (#205). Product owner, on the board: add a Design swimlane, set In progress to WIP 2, optional card styles, and save the 4 shared queries (preview file). Then start P2-001 (#206: finish Phase 1, merge via the branch policy, fix Bug #169, tag `api-v1.0`), then FE-S0a. Figma work is board story P2-047.
+
+Earlier next-step text (Phase 1): Board done (168 items). Start S1a with `build-app-builder` (E1, work item #1); commits use `AB#<id>`.
