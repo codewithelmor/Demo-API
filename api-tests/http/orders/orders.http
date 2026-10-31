@@ -5,7 +5,8 @@
 # Visual Studio: send loginAdmin, loginCustomerA, meCustomerA, createProduct, createOrder and getOrder first.
 # Flow: product (stock 100) -> order 1 Pending -> replace items (If-Match) -> Confirmed -> Shipped -> Completed;
 # order 2 Pending -> cancel. No order is left Pending (the cap is 5 open Pending orders per customer).
-# Cleanup: the product is soft deleted at the end; completed and cancelled orders stay (rows are never deleted).
+# Cleanup: completed and cancelled orders stay (rows are never deleted) and so does their product, so the
+# order lines keep a live product.
 
 ### POST Auth - Login Admin
 # @name loginAdmin
@@ -509,7 +510,6 @@ Content-Type: application/json
 POST {{baseUrl}}/api/v1/orders/{{createOrderToCancel.response.body.$.id}}/cancel
 Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
 
-### DELETE Products - Cleanup (EP-26)
-# @expect 204
-DELETE {{baseUrl}}/api/v1/products/{{createProduct.response.body.$.id}}
-Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+# The product is not deleted here: the orders above keep pointing at it, and a deleted product makes the
+# order lines show "Product no longer available" for the Customer (404 on the name lookup). EP-26 delete is
+# covered in products/products.http.

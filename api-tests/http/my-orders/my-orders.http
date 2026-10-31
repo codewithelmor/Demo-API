@@ -3,7 +3,7 @@
 # Stretch EP-49 (replace my items) and the Idempotency-Key header are not built and not covered.
 # Needs: api-tests/scripts/Initialize-LocalHttpEnv.ps1. Run top to bottom.
 # Visual Studio: send loginAdmin, loginCustomerA, loginCustomerB, createProduct and placeMyOrder first.
-# Cleanup: both orders are cancelled (no Pending order is left) and the product is soft deleted.
+# Cleanup: both orders are cancelled (no Pending order is left); the product stays so the order lines keep a live product.
 
 ### POST Auth - Login Admin
 # @name loginAdmin
@@ -267,7 +267,6 @@ Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
 POST {{baseUrl}}/api/v1/customers/me/orders/{{placeMyOrderWithCustomerId.response.body.$.id}}/cancel
 Authorization: Bearer {{loginCustomerA.response.body.$.accessToken}}
 
-### DELETE Products - Cleanup (EP-26)
-# @expect 204
-DELETE {{baseUrl}}/api/v1/products/{{createProduct.response.body.$.id}}
-Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+# The product is not deleted here: the orders above keep pointing at it, and a deleted product makes the
+# order lines show "Product no longer available" for the Customer (404 on the name lookup). EP-26 delete is
+# covered in products/products.http.
