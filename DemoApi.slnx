@@ -14,4 +14,8 @@
     <Project Path="tests/DemoApi.IntegrationTests/DemoApi.IntegrationTests.csproj" />
     <Project Path="tests/DemoApi.UnitTests/DemoApi.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/web/">
+    <Project Path="web/DemoApi.Bff.Tests/DemoApi.Bff.Tests.csproj" />
+    <Project Path="web/DemoApi.Bff/DemoApi.Bff.csproj" />
+  </Folder>
 </Solution>

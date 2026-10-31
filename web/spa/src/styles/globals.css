@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+/* Dark mode follows the .dark class that public/theme-init.js and useTheme set. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens. Colors meet WCAG 2.2 AA contrast in both themes (checked by the axe test). */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.15 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --primary: oklch(0.25 0.03 260);
+  --primary-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.5 0.19 27);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.6 0 0);
+  --ring: oklch(0.45 0.15 260);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: oklch(0.16 0 0);
+  --foreground: oklch(0.97 0 0);
+  --muted: oklch(0.26 0 0);
+  --muted-foreground: oklch(0.76 0 0);
+  --primary: oklch(0.9 0.02 260);
+  --primary-foreground: oklch(0.2 0.02 260);
+  --destructive: oklch(0.74 0.16 25);
+  --border: oklch(0.34 0 0);
+  --input: oklch(0.58 0 0);
+  --ring: oklch(0.75 0.12 260);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-md: var(--radius);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

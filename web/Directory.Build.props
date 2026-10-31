@@ -1,0 +1,11 @@
+<Project>
+  <!-- Imports the root file, then adds what the root only adds for paths under src/ (FA-D3). Do not edit the root files. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!-- Banned APIs (DateTime.Now, Thread.Sleep, Newtonsoft.Json...) are build errors here too. The root condition is
+       "path contains src", so this block is skipped when the root already added the analyzer. -->
+  <ItemGroup Condition="!$(MSBuildProjectDirectory.Contains('src'))">
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)../BannedSymbols.txt" Link="BannedSymbols.txt" />
+  </ItemGroup>
+</Project>

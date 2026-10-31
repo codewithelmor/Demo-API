@@ -11,6 +11,17 @@ pr:
 pool:
   vmImage: ubuntu-24.04
 
+parameters:
+  # Lifts the API freeze (G4, FA-D4). Only for the API v1.1 epic.
+  - name: allowApiChanges
+    type: boolean
+    default: false
+  # E2E stage is a SKELETON (frontend-architecture section 5, item 5): it has never run in a pipeline.
+  # Turn it on once the E2E account provisioning step below is written.
+  - name: runE2E
+    type: boolean
+    default: false
+
 variables:
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   DOTNET_NOLOGO: '1'
@@ -21,6 +32,33 @@ variables:
   TEST_BUDGET_SECONDS: '300'   # NFR-16: full suite <= 5 minutes (warning only)
 
 stages:
+  # Phase 2 keeps the API source unchanged (G4). Fails when a frozen path differs from tag api-v1.0.
+  # The tag does not exist until the Phase 2 start commit is tagged; until then the stage reports it and passes.
+  - ${{ if eq(parameters.allowApiChanges, false) }}:
+    - stage: ApiFreeze
+      dependsOn: []
+      jobs:
+        - job: ApiFreeze
+          displayName: API unchanged since api-v1.0
+          timeoutInMinutes: 10
+          steps:
+            - checkout: self
+              fetchDepth: 0
+              fetchTags: true
+            - script: |
+                set -euo pipefail
+                if ! git rev-parse -q --verify "refs/tags/api-v1.0^{commit}" >/dev/null; then
+                  echo "##vso[task.logissue type=warning]Tag api-v1.0 does not exist yet: API freeze check SKIPPED. Create the tag on the Phase 2 start commit to enable it."
+                  exit 0
+                fi
+                changed=$(git diff --name-only api-v1.0 HEAD -- src/ Directory.Build.props Directory.Packages.props BannedSymbols.txt global.json nuget.config .editorconfig deploy/docker/Dockerfile)
+                if [ -n "$changed" ]; then
+                  echo "##vso[task.logissue type=error]API is frozen (G4): $changed"
+                  exit 1
+                fi
+                echo "API frozen paths unchanged since api-v1.0"
+              displayName: Check frozen paths against api-v1.0
+
   - stage: Build
     jobs:
       - job: Build
@@ -40,6 +78,84 @@ stages:
               fi
             displayName: Vulnerable packages
 
+      - job: Spa
+        displayName: SPA (typecheck, lint, test, bundle, audit)
+        timeoutInMinutes: 20
+        variables:
+          npm_config_cache: $(Pipeline.Workspace)/.npm
+        steps:
+          - checkout: self
+            fetchDepth: 1
+
+          - task: NodeTool@0
+            displayName: Use Node from .nvmrc
+            inputs:
+              versionSource: fromFile
+              versionFilePath: web/spa/.nvmrc
+
+          - task: Cache@2
+            displayName: Cache npm
+            inputs:
+              key: 'npm | "$(Agent.OS)" | web/spa/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(npm_config_cache)
+
+          - script: npm ci
+            workingDirectory: web/spa
+            displayName: npm ci (lockfile)
+
+          - script: npm run typecheck
+            workingDirectory: web/spa
+            displayName: Typecheck
+
+          - script: npm run lint
+            workingDirectory: web/spa
+            displayName: Lint (zero warnings)
+
+          - script: npm run format:check
+            workingDirectory: web/spa
+            displayName: Format check
+
+          - script: npm test -- --reporter=default --reporter=junit --outputFile.junit="$(TEST_RESULTS)/spa-junit.xml"
+            workingDirectory: web/spa
+            displayName: Unit and component tests
+
+          - task: PublishTestResults@2
+            displayName: Publish SPA test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '$(TEST_RESULTS)/spa-junit.xml'
+              testRunTitle: SPA
+              failTaskOnFailedTests: true
+
+          - script: npm run build
+            workingDirectory: web/spa
+            displayName: Build (type check + vite build)
+
+          - script: npm run check:bundle
+            workingDirectory: web/spa
+            displayName: Bundle budget (initial JS <= 200 KB gzip)
+
+          - script: |
+              set -euo pipefail
+              npm run api:types
+              git diff --exit-code -- src/api/schema.d.ts || {
+                echo "##vso[task.logissue type=error]src/api/schema.d.ts is out of date. Run 'npm run api:types' in web/spa and commit."
+                exit 1
+              }
+            workingDirectory: web/spa
+            displayName: API types drift check
+
+          - script: npm audit --omit=dev --audit-level=high
+            workingDirectory: web/spa
+            displayName: npm audit (production dependencies, high)
+
+          - script: npm audit signatures
+            workingDirectory: web/spa
+            displayName: npm audit signatures (registry signatures and provenance)
+
       - job: DockerImages
         displayName: Build container images
         steps:
@@ -49,7 +165,8 @@ stages:
               set -euo pipefail
               docker build -f deploy/docker/Dockerfile --target migrator -t demoapi/migrator:ci .
               docker build -f deploy/docker/Dockerfile --target api -t demoapi/api:ci .
-            displayName: docker build (migrator, api)
+              docker build -f deploy/docker/Dockerfile.web -t demoapi/web:ci .
+            displayName: docker build (migrator, api, web)
 
   - stage: Test
     dependsOn: Build
@@ -62,12 +179,12 @@ stages:
           - script: |
               set -euo pipefail
               start=$(date +%s)
-              for p in tests/DemoApi.UnitTests tests/DemoApi.ArchitectureTests; do
+              for p in tests/DemoApi.UnitTests tests/DemoApi.ArchitectureTests web/DemoApi.Bff.Tests; do
                 dotnet test --project "$p" -c Release --no-build \
                   --report-xunit-trx --results-directory "$(TEST_RESULTS)"
               done
               echo "elapsed: $(( $(date +%s) - start )) s"
-            displayName: dotnet test (unit, architecture)
+            displayName: dotnet test (unit, architecture, BFF)
 
           - task: PublishTestResults@2
             displayName: Publish test results
@@ -75,7 +192,7 @@ stages:
             inputs:
               testResultsFormat: VSTest
               testResultsFiles: '$(TEST_RESULTS)/**/*.trx'
-              testRunTitle: Unit + architecture
+              testRunTitle: Unit + architecture + BFF
               failTaskOnFailedTests: true
 
       - job: IntegrationTests
@@ -124,3 +241,102 @@ stages:
               tar -xzf "$f" gitleaks
               ./gitleaks git . --redact --no-banner --exit-code 1
             displayName: gitleaks detect
+
+  # E2E: Playwright (Chromium all tests, Firefox only @cross-browser) against the compose stack on the agent.
+  # WRITTEN BUT NEVER RUN ON AZURE: it was proven only locally (same scripts and commands against a local stack).
+  # It is OFF by default (parameter runE2E) until one run on Azure is green. To enable it:
+  #   - try it once:  Pipelines > Run pipeline > tick "runE2E" (needs a branch run; a PR build cannot set parameters);
+  #   - make it permanent (required on every PR, test strategy Q-D7): change the default of runE2E to true.
+  # Accounts: scripts/provision-e2e-ci.mjs registers a product (as the seed Admin), the shared Customer and two
+  # throw-away Customers through the API, confirms them with the link from `docker compose logs api`, and sets
+  # SECRET pipeline variables for the next steps (no file, no artifact). Traces are off in CI and nothing under
+  # web/spa/test-results is published except the JUnit XML (traces hold typed passwords and the session cookie).
+  - ${{ if eq(parameters.runE2E, true) }}:
+    - stage: E2E
+      dependsOn: Build
+      jobs:
+        - job: Playwright
+          displayName: Playwright against docker compose
+          timeoutInMinutes: 40   # image builds (api, migrator, web) dominate; the suite itself takes about 1 minute
+          variables:
+            npm_config_cache: $(Pipeline.Workspace)/.npm
+            E2E_BASE_URL: http://localhost:8081   # compose publishes web on 127.0.0.1:8081
+            E2E_API_URL: http://localhost:8080    # compose publishes api on 127.0.0.1:8080 (used by the provisioning script only)
+          steps:
+            - checkout: self
+              fetchDepth: 1
+
+            - task: NodeTool@0
+              displayName: Use Node from .nvmrc
+              inputs:
+                versionSource: fromFile
+                versionFilePath: web/spa/.nvmrc
+
+            - task: Cache@2
+              displayName: Cache npm
+              inputs:
+                key: 'npm | "$(Agent.OS)" | web/spa/package-lock.json'
+                restoreKeys: |
+                  npm | "$(Agent.OS)"
+                path: $(npm_config_cache)
+
+            - script: npm ci
+              workingDirectory: web/spa
+              displayName: npm ci (lockfile)
+
+            - script: npx playwright install --with-deps chromium firefox
+              workingDirectory: web/spa
+              displayName: Install Playwright browsers
+
+            # Starts from clean volumes (fresh agent). BFF anonymous/auth/refresh limits are raised in compose.yaml (dev only).
+            - script: docker compose up -d --build --wait
+              displayName: Start the compose stack (build, wait for healthy services)
+
+            - script: |
+                set -euo pipefail
+                # The chiseled web image has no healthcheck, so --wait only waits for "running": poll readiness.
+                curl -fsS -o /dev/null --retry 60 --retry-delay 2 --retry-all-errors "$E2E_BASE_URL/bff/health/ready"
+                curl -fsS -o /dev/null --retry 30 --retry-delay 2 --retry-all-errors "$E2E_API_URL/health/ready" \
+                  || echo "##vso[task.logissue type=warning]API /health/ready did not answer on $E2E_API_URL (provisioning will fail if the API is down)."
+              displayName: Wait for /bff/health/ready
+
+            # Creates one product, the shared Customer and two throw-away Customers; prints only ##vso setvariable
+            # lines (consumed by the agent, values masked afterwards). Never add `echo` of these variables.
+            - script: node scripts/provision-e2e-ci.mjs --vso
+              workingDirectory: web/spa
+              displayName: Provision E2E accounts (secret variables)
+
+            - script: npx playwright test
+              workingDirectory: web/spa
+              displayName: Playwright (Chromium all, Firefox @cross-browser; retries 0)
+              env:
+                CI: 'true'   # missing E2E_* variables fail instead of skipping
+                E2E_BASE_URL: $(E2E_BASE_URL)
+                E2E_CUSTOMER_EMAIL: $(E2E_CUSTOMER_EMAIL)
+                E2E_CUSTOMER_PASSWORD: $(E2E_CUSTOMER_PASSWORD)
+                E2E_THROWAWAY_EMAIL: $(E2E_THROWAWAY_EMAIL)
+                E2E_THROWAWAY_PASSWORD: $(E2E_THROWAWAY_PASSWORD)
+                E2E_THROWAWAY_DELETE_EMAIL: $(E2E_THROWAWAY_DELETE_EMAIL)
+                E2E_THROWAWAY_DELETE_PASSWORD: $(E2E_THROWAWAY_DELETE_PASSWORD)
+
+            # JUnit only. Do NOT add a PublishPipelineArtifact for web/spa/test-results: screenshots and any trace
+            # may show typed passwords or the session cookie.
+            - task: PublishTestResults@2
+              displayName: Publish E2E results (JUnit)
+              condition: succeededOrFailed()
+              inputs:
+                testResultsFormat: JUnit
+                testResultsFiles: web/spa/test-results/e2e.xml
+                testRunTitle: E2E
+                failTaskOnFailedTests: true
+
+            # No api log here: it holds one-time confirmation tokens.
+            - script: |
+                docker compose ps
+                docker compose logs --tail 50 web
+              condition: failed()
+              displayName: Compose status and BFF log tail (on failure)
+
+            - script: docker compose down -v
+              condition: always()
+              displayName: Stop the stack and remove volumes

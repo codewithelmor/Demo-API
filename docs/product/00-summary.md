@@ -42,6 +42,8 @@ Mode: Standard (confirmed 2026-10-24)
 | 9. Quality (FE) | Done (2026-10-30) | [test strategy, Phase 2](07-quality/test-strategy.md) |
 | 8. Delivery (FE) | Done (2026-10-30) | [delivery plan §10](06-delivery/delivery-plan.md), [board preview Phase 2](06-delivery/azdo-preview-phase2.md) (165 items, 335 SP) |
 
+| 10. Build (FE-S0a + FE-R1 Customer portal) | Built, not merged (2026-10-31) | `web/DemoApi.Bff` (97 tests), `web/spa` (232 tests, 40 e2e on the compose stack, initial JS 159.7 KB gzip of 200). Reviews: [BFF security](07-quality/bff-security-review-2026-10-30.md), [SPA security](07-quality/spa-security-review-2026-10-30.md), [SPA code](07-quality/spa-code-review-2026-10-30.md). Open: BFF L-5 (events/OTel), L-7 (step-up, before Admin UI), CI e2e accounts, Firefox/WebKit/360 px, G1 usability test, Web Vitals/k6, tag `api-v1.0` and Phase 1 merge (product owner) |
+
 Planned order: Concept → Requirements → Architecture → Security → Quality → Delivery → Release (light) → Operations (light).
 
 ## Key decisions

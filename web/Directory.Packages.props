@@ -1,0 +1,7 @@
+<Project>
+  <!-- Imports the root pins, then adds BFF-only packages (FA-D3). Do not edit the root files. -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Packages.props', '$(MSBuildThisFileDirectory)../'))" />
+  <ItemGroup>
+    <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
+  </ItemGroup>
+</Project>

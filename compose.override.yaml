@@ -1,0 +1,12 @@
+# Local only (git-ignored): lets the full .http suite run without hitting 429.
+services:
+  api:
+    environment:
+      RateLimiting__AuthStrict__PermitLimit: "1000"
+      RateLimiting__Refresh__PermitLimit: "1000"
+  valkey:
+    ports:
+      - "127.0.0.1:6379:6379"
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"

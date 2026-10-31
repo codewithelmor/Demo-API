@@ -1,0 +1,16 @@
+# Same test-project decisions as the root [tests/**.cs] block; the root globs do not reach web/.
+[*.cs]
+dotnet_diagnostic.CA1707.severity = none
+dotnet_diagnostic.CA2000.severity = none
+dotnet_diagnostic.CA1001.severity = none
+dotnet_diagnostic.CA1063.severity = none
+dotnet_diagnostic.CA1816.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA5394.severity = none
+dotnet_diagnostic.CA2234.severity = none
+dotnet_diagnostic.CA1849.severity = none
+dotnet_diagnostic.CA1822.severity = none
+dotnet_diagnostic.CA1852.severity = none
+dotnet_diagnostic.IDE0005.severity = none
+# Tests are short and in-process; passing the test cancellation token everywhere adds noise.
+dotnet_diagnostic.xUnit1051.severity = none

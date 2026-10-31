@@ -20,3 +20,11 @@ api-tests/
 tests/
 deploy/
 *.md
+
+# Phase 2 web: never send local SPA installs or build output into the context
+**/node_modules/
+web/spa/dist/
+web/spa/coverage/
+web/spa/test-results/
+web/spa/playwright-report/
+web/DemoApi.Bff/wwwroot/

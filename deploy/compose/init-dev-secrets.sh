@@ -7,8 +7,9 @@
 #   api/         uid 1654   key-per-file config: Jwt__SigningKey, SeedAdmin__Password,
 #                           ConnectionStrings__Postgres (app role), ConnectionStrings__Valkey
 #   migrator/    uid 1654   pgpass for demoapi_migrator (Npgsql Passfile=)
+#   bff/         uid 1654   key-per-file config for the web BFF: Valkey__ConnectionString (user demoapi_bff)
 #   postgres/    uid 999    POSTGRES_PASSWORD, DEMOAPI_MIGRATOR_PASSWORD, DEMOAPI_APP_PASSWORD
-#   valkey/      uid 999    users.acl (SHA-256 hashed password), password (for the healthcheck)
+#   valkey/      uid 999    users.acl (SHA-256 hashed passwords), password (for the healthcheck)
 # Files are mode 0440. Changing DB passwords after the first start needs `docker compose down -v`.
 set -eu
 umask 077
@@ -92,6 +93,7 @@ ensure postgres_password "${POSTGRES_PASSWORD:-}" random_password
 ensure migrator_password "" random_password
 ensure app_password "${POSTGRES_APP_PASSWORD:-}" random_password
 ensure valkey_password "${VALKEY_PASSWORD:-}" random_password
+ensure bff_valkey_password "" random_password
 
 JWT_KEY=$(cat "$SRC/jwt_signing_key")
 ADMIN_PW=$(cat "$SRC/seed_admin_password")
@@ -100,6 +102,8 @@ MIG_PW=$(cat "$SRC/migrator_password")
 APP_PW=$(cat "$SRC/app_password")
 VK_PW=$(cat "$SRC/valkey_password")
 VK_HASH=$(printf '%s' "$VK_PW" | sha256sum | cut -d ' ' -f 1)
+BFF_VK_PW=$(cat "$SRC/bff_valkey_password")
+BFF_VK_HASH=$(printf '%s' "$BFF_VK_PW" | sha256sum | cut -d ' ' -f 1)
 
 # postgres: superuser + role passwords for 01-roles.sh
 dir "$ROOT/postgres" "$PG_UID" "$PG_GID"
@@ -112,6 +116,7 @@ put "$ROOT/postgres" DEMOAPI_APP_PASSWORD "$PG_UID" "$PG_GID" "$APP_PW"
 dir "$ROOT/valkey" "$VALKEY_UID" "$VALKEY_GID"
 put "$ROOT/valkey" users.acl "$VALKEY_UID" "$VALKEY_GID" "user default reset off
 user demoapi reset on #$VK_HASH ~products:* ~__MSFT_HCT__* resetchannels +@all -@dangerous
+user demoapi_bff reset on #$BFF_VK_HASH ~bff:* resetchannels +@all -@dangerous
 "
 put "$ROOT/valkey" password "$VALKEY_UID" "$VALKEY_GID" "$VK_PW"
 
@@ -128,5 +133,10 @@ put "$ROOT/api" ConnectionStrings__Postgres "$APP_UID" "$APP_UID" \
   "Host=postgres;Port=5432;Database=$DB_NAME;Username=demoapi_app;Password=$APP_PW;GSS Encryption Mode=Disable"
 put "$ROOT/api" ConnectionStrings__Valkey "$APP_UID" "$APP_UID" \
   "valkey:6379,user=demoapi,password=$VK_PW,abortConnect=false,tiebreaker=,configChannel=,version=7.2"
+
+# bff: key-per-file configuration for the web BFF, read from /run/secrets/bff (BffHost.AddBff)
+dir "$ROOT/bff" "$APP_UID" "$APP_UID"
+put "$ROOT/bff" Valkey__ConnectionString "$APP_UID" "$APP_UID" \
+  "valkey:6379,user=demoapi_bff,password=$BFF_VK_PW,abortConnect=false,tiebreaker=,configChannel=,version=7.2"
 
 log "dev secrets ready (values not printed)"

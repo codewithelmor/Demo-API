@@ -141,6 +141,14 @@ Never log `Authorization`, `Cookie`, `Set-Cookie`, or bodies of `/bff/login` and
 - Admin absolute lifetime 12 h (S-D10); R2 step-up: EP-16 and EP-19 need a sign-in within 15 min, else 401 `reauth-required` (S-D11).
 - Trusted Types report-only, then enforced (S-D13).
 
+## Amendment 2 (2026-10-31, as built; BFF security review and SPA review)
+- **Cookie and store:** the cookie value is the raw 256-bit session ID (not Data Protection-protected). The session entry in the distributed cache is encrypted with a Data Protection purpose that includes the session ID, and the payload's `SessionId` is re-checked. The store is a custom `SessionStore`, not `ITicketStore`.
+- **Refresh and logout:** the single-flight entry removes itself when the flight ends; tokens issued by the API are revoked when a local save fails or loses a race with logout; logout does not spend the refresh rate-limit budget.
+- **Proxy:** request headers are forwarded from an allow-list (`CopyRequestHeaders = false`), not a block-list.
+- **Config:** `Valkey:AllowInMemory` (in-memory sessions only in Development unless set), `DataProtection:KeysPath` validated outside Development, `Bff:ReadyCacheSeconds`, `Bff:ReadyPermitLimit`, `Bff:AnonymousPermitLimit`, `Bff:AuthStrictPermitLimit`, `Bff:RefreshPermitLimit`. The container reads its Valkey connection string from `/run/secrets/bff` (key-per-file).
+- **CSP nonce (security finding L-3):** `index.html` is a template with `<meta name="csp-nonce">`. The BFF serves it with a fresh 128-bit nonce per response and sends `style-src 'self' 'nonce-…'` on those responses only; every other response keeps `style-src 'self'`. The SPA copies the nonce to `__webpack_nonce__` for Radix's scroll-lock style. No `unsafe-inline`. Zod runs with `jitless` through `src/lib/zod.ts` so no `eval` probe is reported.
+- **Not built yet:** OpenTelemetry and security-event logging with hashed session IDs (T-55, review L-5), Admin step-up `reauth-required` (S-D11, review L-7, must land before any Admin UI), the `https` compose profile, Trusted Types report-only header.
+
 ## Follow-up ADRs and amendments
 - ADR-0016 SPA stack and conventions (see [frontend-architecture.md](../frontend-architecture.md) §1).
 - ADR-0017 Local HTTPS and cookie policy for development (Safari spike outcome).

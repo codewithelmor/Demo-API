@@ -1,6 +1,7 @@
 # Orders API local environment (solution-structure section 10, ADR-0012). Development only.
 #   docker compose up -d                        secrets-init -> postgres + valkey -> migrator -> api
 #   docker compose exec api cat /run/secrets/dev/SeedAdmin__Password
+#   web (SPA + BFF) on http://localhost:8081 after `up`; probe http://localhost:8081/bff/health/ready
 #   docker compose --profile observability up -d   adds the Aspire dashboard on http://127.0.0.1:18888
 #   docker compose down -v                      reset data and regenerate dev secrets
 # PostgreSQL, Valkey and OTLP are not published; see compose.override.yaml.example for DB tools.
@@ -155,6 +156,11 @@ services:
       # Set OTEL_EXPORTER_OTLP_ENDPOINT= (empty) in .env to turn the exporter off.
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://aspire-dashboard:18889}
       OTEL_SERVICE_NAME: demoapi
+      # Phase 2: e-mail links point at the web front end (BFF) origin. Cors__AllowedOrigins stays empty (same origin).
+      Email__LinkBaseUrl: ${WEB_ORIGIN:-http://localhost:8081}
+      # Dev only: the browser tests sign in and refresh many times from one IP.
+      RateLimiting__AuthStrict__PermitLimit: "1000"
+      RateLimiting__Refresh__PermitLimit: "1000"
     volumes:
       # Secrets (JWT key, seed Admin password, connection strings) as key-per-file config, read-only.
       - type: volume
@@ -164,6 +170,54 @@ services:
         volume:
           subpath: api
       - dp-keys:/var/lib/demoapi/dp-keys
+    logging: *logging
+
+  # Phase 2: React SPA + ASP.NET Core BFF on one origin (ADR-0015). http://localhost:8081
+  # The chiseled image has no shell or curl, so there is no container healthcheck; probe GET /bff/health/ready.
+  # Deferred: opt-in `https` profile on :8443 for Safari/WebKit (needs Initialize-DevCert.ps1 and Kestrel certificate settings).
+  web:
+    build:
+      context: .
+      dockerfile: deploy/docker/Dockerfile.web
+    image: demoapi/web:dev
+    <<: *hardening
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    pids_limit: 512
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_HTTP_PORT:-8081}:8080"
+    environment:
+      # Production on purpose: sessions need Valkey and a persistent Data Protection key ring (fail closed).
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Bff__ApiBaseUrl: http://api:8080
+      Bff__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:8081}
+      # Dev only: the browser tests sign in and refresh many times from one IP.
+      Bff__AuthStrictPermitLimit: "1000"
+      Bff__RefreshPermitLimit: "1000"
+      # Every page load asks /bff/user as an anonymous visitor: 60/min per IP is not enough for a full browser run.
+      Bff__AnonymousPermitLimit: "1000"
+      # Valkey__ConnectionString (user demoapi_bff, keys bff:* only) is read from /run/secrets/bff below.
+      DataProtection__KeysPath: /var/lib/demoapi-bff/dp-keys
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://aspire-dashboard:18889}
+      OTEL_SERVICE_NAME: demoapi-bff
+    volumes:
+      - type: volume
+        source: dev-secrets
+        target: /run/secrets/bff
+        read_only: true
+        volume:
+          subpath: bff
+      - bff-dp-keys:/var/lib/demoapi-bff/dp-keys
     logging: *logging
 
   aspire-dashboard:
@@ -181,3 +235,4 @@ volumes:
   dev-secrets:
   pgdata:
   dp-keys:
+  bff-dp-keys:

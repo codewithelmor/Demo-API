@@ -1,0 +1,75 @@
+import { NavLink, Outlet, useNavigation } from 'react-router'
+import { CartLink } from '@/components/cart-link'
+import { useSession } from '@/lib/session'
+import { SignOutButton } from '@/features/auth/sign-out-button'
+import { useFocusHeadingOnNavigate } from '@/hooks/use-focus-heading-on-navigate'
+import { cn } from '@/lib/utils'
+
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'rounded-md px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring',
+    isActive && 'bg-muted',
+  )
+
+// App shell: skip link, header (navigation and account only when signed in), and <main>.
+export function RootLayout() {
+  useFocusHeadingOnNavigate()
+  const navigation = useNavigation()
+  const user = useSession()
+
+  return (
+    <div className="min-h-dvh">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:rounded-md focus:bg-background focus:p-2"
+      >
+        Skip to main content
+      </a>
+      <header className="border-b">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 p-4">
+          <span className="font-semibold">Orders Shop</span>
+          {user && (
+            <>
+              <nav aria-label="Main">
+                <ul className="flex gap-1">
+                  <li>
+                    <NavLink to="/products" className={navLinkClass}>
+                      Products
+                    </NavLink>
+                  </li>
+                  {user.roles.includes('Customer') && (
+                    <li>
+                      <NavLink to="/orders" className={navLinkClass}>
+                        My orders
+                      </NavLink>
+                    </li>
+                  )}
+                  {user.roles.includes('Admin') && (
+                    <li>
+                      <NavLink to="/admin" className={navLinkClass}>
+                        Back office
+                      </NavLink>
+                    </li>
+                  )}
+                </ul>
+              </nav>
+              <div className="flex items-center gap-3">
+                <CartLink />
+                {user.roles.includes('Customer') && (
+                  <NavLink to="/account" className={navLinkClass}>
+                    My account
+                  </NavLink>
+                )}
+                <span className="text-sm text-muted-foreground">{user.email}</span>
+                <SignOutButton />
+              </div>
+            </>
+          )}
+        </div>
+      </header>
+      <main id="main" className="mx-auto max-w-5xl p-4" aria-busy={navigation.state === 'loading'}>
+        <Outlet />
+      </main>
+    </div>
+  )
+}
