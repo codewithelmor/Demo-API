@@ -1,3 +1,4 @@
+import { SEARCH_MAX, SEARCH_MIN } from '@/lib/field-rules'
 import { z } from '@/lib/zod'
 
 /**
@@ -9,10 +10,6 @@ import { z } from '@/lib/zod'
 
 /** Products per page. API maximum is 100 (catalog 1.4). */
 export const PAGE_SIZE = 20
-/** Shortest search text that is sent to the API. */
-export const SEARCH_MIN = 2
-/** Longest search text. */
-export const SEARCH_MAX = 100
 
 /** The sort orders the API accepts. A leading `-` means descending. */
 export const SORTS = ['name', '-name', 'price', '-price'] as const

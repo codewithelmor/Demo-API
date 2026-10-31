@@ -53,3 +53,8 @@ export const phone = z
   .refine((value) => value === '' || E164.test(value), {
     error: 'Enter the phone number with + and the country code, for example +14155550123.',
   })
+
+/** Shortest search text that is sent to the API. */
+export const SEARCH_MIN = 2
+/** Longest search text. */
+export const SEARCH_MAX = 100

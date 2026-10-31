@@ -103,7 +103,7 @@ describe('adding to the cart', () => {
     signedInAs(adminUser)
     renderApp('/admin')
 
-    await screen.findByRole('heading', { level: 1, name: 'Back office coming soon' })
+    await screen.findByRole('heading', { level: 1, name: 'Back office' })
 
     expect(screen.queryByRole('link', { name: /^Cart/ })).not.toBeInTheDocument()
   })

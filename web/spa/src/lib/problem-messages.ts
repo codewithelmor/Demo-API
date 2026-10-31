@@ -25,6 +25,8 @@ const messages: Record<string, string> = {
   'customer-has-open-orders': 'Cancel or finish your open orders first.',
   'rate-limited': 'Too many attempts. Try again in a moment.',
   'concurrency-conflict': 'Someone changed this at the same time. We reloaded it. Try again.',
+  'duplicate-sku': 'Another active product already uses this SKU.',
+  'not-deleted': 'This product is not deleted.',
   'invalid-order-state': 'This order can no longer be changed.',
   'invalid-refresh-token': 'Your session ended. Sign in again to continue.',
   'invalid-response': 'Something went wrong. Try again.',

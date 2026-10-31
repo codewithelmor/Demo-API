@@ -156,15 +156,15 @@ describe('role guard', () => {
         name: 'You do not have access to this page.',
       }),
     ).toBeInTheDocument()
-    expect(screen.queryByText('Back office coming soon')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1, name: 'Back office' })).not.toBeInTheDocument()
   })
 
-  it('shows the back office placeholder to an Admin [US-F006 AC1]', async () => {
+  it('shows the back office to an Admin [US-F006 AC1]', async () => {
     signedInAs(adminUser)
     renderApp('/admin')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Back office coming soon' }),
+      await screen.findByRole('heading', { level: 1, name: 'Back office' }),
     ).toBeInTheDocument()
   })
 

@@ -57,7 +57,7 @@ describe('sign-in page', () => {
     await fillAndSubmit('admin.one@example.test')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Back office coming soon' }),
+      await screen.findByRole('heading', { level: 1, name: 'Back office' }),
     ).toBeInTheDocument()
   })
 

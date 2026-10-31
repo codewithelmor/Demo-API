@@ -1,6 +1,7 @@
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useLocation, useSearchParams, type LoaderFunctionArgs } from 'react-router'
+import { SearchBox } from '@/components/search-box'
 import { NativeSelect } from '@/components/ui/native-select'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -18,7 +19,6 @@ import {
   type CatalogParams,
   type CatalogSort,
 } from '@/features/catalog/catalog-params'
-import { CatalogSearch } from '@/features/catalog/catalog-search'
 import { ProductCard } from '@/features/catalog/product-card'
 import { addMessage, useCart } from '@/hooks/use-cart'
 
@@ -114,7 +114,7 @@ export function CatalogRoute() {
 
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-56 flex-1">
-          <CatalogSearch
+          <SearchBox
             value={params.search ?? ''}
             onSearch={(search) => {
               update((current) => ({ ...current, search, page: 1 }), true)

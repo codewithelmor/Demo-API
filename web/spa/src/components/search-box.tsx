@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { FormField } from '@/components/form-field'
 import { Input } from '@/components/ui/input'
-import { SEARCH_MAX, SEARCH_MIN } from '@/features/catalog/catalog-params'
+import { SEARCH_MAX, SEARCH_MIN } from '@/lib/field-rules'
 
 /** "Debounce": wait this long after the last keystroke before searching, so we do not send a request per letter. */
 const DEBOUNCE_MS = 300
 
-/** Props for {@link CatalogSearch}. */
-interface CatalogSearchProps {
+/** Props for {@link SearchBox}. */
+interface SearchBoxProps {
   /** The search in the URL. */
   value: string
   /** Called with the new search text; `undefined` = no search. Never called with fewer than 2 characters. */
@@ -18,7 +18,7 @@ interface CatalogSearchProps {
  * Search by name or SKU. The URL (and so the request) updates 300 ms after the last keystroke.
  * One character only shows a hint: nothing is sent (US-F026 AC2).
  */
-export function CatalogSearch({ value, onSearch }: CatalogSearchProps) {
+export function SearchBox({ value, onSearch }: SearchBoxProps) {
   // What is typed in the box right now.
   const [text, setText] = useState(value)
   // The last value this box put into the URL, and the URL value it last saw.

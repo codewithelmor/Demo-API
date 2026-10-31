@@ -231,16 +231,59 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
             },
             {
               // Separate chunk, only for Admins. A Customer sees "not allowed" and the chunk never renders.
-              path: 'admin/*',
+              path: 'admin',
               element: <RequireRole roles={['Admin']} />,
               children: [
                 {
-                  index: true,
                   lazy: async () => {
-                    const { AdminRoute } = await import('@/features/admin/admin-route')
-                    return { Component: AdminRoute }
+                    const { AdminLayout } = await import('@/features/admin/admin-layout')
+                    return { Component: AdminLayout }
                   },
+                  children: [
+                    {
+                      index: true,
+                      lazy: async () => {
+                        const { AdminRoute, adminLoader } =
+                          await import('@/features/admin/admin-route')
+                        return {
+                          Component: AdminRoute,
+                          loader: guarded(queryClient, ['Admin'], adminLoader(queryClient)),
+                        }
+                      },
+                    },
+                    {
+                      path: 'products',
+                      lazy: async () => {
+                        const { AdminProductsRoute, adminProductsLoader } =
+                          await import('@/features/admin/admin-products-route')
+                        return {
+                          Component: AdminProductsRoute,
+                          loader: guarded(queryClient, ['Admin'], adminProductsLoader(queryClient)),
+                        }
+                      },
+                    },
+                    {
+                      path: 'products/new',
+                      lazy: async () => {
+                        const { AdminProductCreateRoute } =
+                          await import('@/features/admin/admin-product-form-route')
+                        return { Component: AdminProductCreateRoute }
+                      },
+                    },
+                    {
+                      path: 'products/:productId',
+                      lazy: async () => {
+                        const { AdminProductEditRoute, adminProductLoader } =
+                          await import('@/features/admin/admin-product-form-route')
+                        return {
+                          Component: AdminProductEditRoute,
+                          loader: guarded(queryClient, ['Admin'], adminProductLoader(queryClient)),
+                        }
+                      },
+                    },
+                  ],
                 },
+                { path: '*', element: <NotFoundPage /> },
               ],
             },
           ],
