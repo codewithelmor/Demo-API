@@ -57,7 +57,7 @@ web/                                  # outside src/ so the API stays untouched 
       features/
         auth/       sign-in, register, confirm-email, resend, forgot-password, reset-password
         catalog/    catalog-route.tsx, catalog-api.ts, product-detail-route.tsx, ...
-        cart/       cart-store.ts (localStorage keyed by userId; ids, qty, price seen)
+        cart/       cart screens; state = lib/cart-reducer.ts (pure useReducer reducer) + hooks/cart-provider.tsx, saved to localStorage via lib/cart-storage.ts (ids, qty, price seen)
         orders/     place-order, my-orders, order-detail, cancel-order
         profile/    profile, change-password, delete-account
         admin/      products/ customers/ orders/ users/ reports/ audit-logs/   (lazy, own chunk)

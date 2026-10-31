@@ -1,6 +1,7 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import { RouterProvider } from 'react-router'
+import { CartProvider } from '@/hooks/cart-provider'
 import { createQueryClient } from '@/app/query-client'
 import { createTestRouter } from '@/app/router'
 
@@ -14,7 +15,9 @@ export function renderApp(url: string) {
   const router = createTestRouter(queryClient, [url])
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <CartProvider>
+        <RouterProvider router={router} />
+      </CartProvider>
     </QueryClientProvider>,
   )
   return { router, queryClient }

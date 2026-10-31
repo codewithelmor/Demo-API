@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { CartProvider } from '@/hooks/cart-provider'
 import { useCart } from '@/hooks/use-cart'
 import { sessionKey } from '@/lib/session'
 import { customerUser, productId } from '@/test/data'
@@ -10,7 +11,9 @@ function setup() {
   const client = new QueryClient()
   client.setQueryData(sessionKey, customerUser)
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    <QueryClientProvider client={client}>
+      <CartProvider>{children}</CartProvider>
+    </QueryClientProvider>
   )
   return renderHook(() => useCart(), { wrapper })
 }
