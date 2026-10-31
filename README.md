@@ -14,6 +14,10 @@ A narrated walkthrough (about 1 min 45 s) of the running API in the Scalar UI. I
 
 A narrated walkthrough (about 5 min 20 s) of the React web front end (web 0.1.0) running against the API with demo data. It covers the customer portal (sign-up and email confirmation, catalog search and filters, cart, placing and cancelling orders, profile, password change and reset, account deletion) and the first part of the back office (dashboard and product management). The customer, order, report, user and audit-log admin screens are not built yet. The voice is AI-generated.
 
+**[Architecture tour: .NET 10 API, BFF and React, built with AI assistance](https://www.loom.com/share/bdaf397af4e44e998f309976b915aaf2)**
+
+A narrated slide tour (about 8 min 40 s) of how the system is built: the API structure, data and security, the BFF (sessions, refresh, proxy), the React front end, and the test and pipeline gates. It is a proof of concept on a feature branch, to be merged to main after final review. The voice is AI-generated.
+
 ## Contents
 
 - [Demo video](#demo-video)

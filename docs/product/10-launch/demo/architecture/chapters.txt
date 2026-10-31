@@ -1,0 +1,8 @@
+0:00 Introduction
+0:20 The big picture
+0:50 How it is built (AI-assisted)
+1:21 API: structure, data, security
+3:57 BFF: sessions, refresh, proxy
+5:59 React front end
+7:26 Quality and pipeline
+8:05 What you get

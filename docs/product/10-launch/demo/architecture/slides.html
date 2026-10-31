@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orders Shop architecture</title>
+<style>
+  :root { --bg:#0b1220; --panel:#111c33; --panel2:#16243f; --line:#27385c; --text:#e8eefb; --mute:#9db0d1;
+          --teal:#2dd4bf; --amber:#fbbf24; --violet:#a78bfa; --red:#fb7185; --green:#4ade80; --blue:#60a5fa; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { width:1920px; height:1080px; background:var(--bg); color:var(--text);
+              font-family:"Segoe UI",Inter,Arial,sans-serif; overflow:hidden; }
+  .slide { display:none; width:1920px; height:1080px; padding:64px 96px 0; flex-direction:column; position:relative;
+           background:radial-gradient(1200px 600px at 85% -10%, #14305a55, transparent), var(--bg); }
+  body[data-slide="1"] #s1, body[data-slide="2"] #s2, body[data-slide="3"] #s3, body[data-slide="4"] #s4,
+  body[data-slide="5"] #s5, body[data-slide="6"] #s6, body[data-slide="7"] #s7, body[data-slide="8"] #s8,
+  body[data-slide="9"] #s9, body[data-slide="10"] #s10, body[data-slide="11"] #s11, body[data-slide="12"] #s12,
+  body[data-slide="13"] #s13, body[data-slide="14"] #s14, body[data-slide="15"] #s15, body[data-slide="16"] #s16 { display:flex; }
+  .st { opacity:0; }
+  .st.on { opacity:1; }
+  .kick { display:inline-block; font-size:22px; font-weight:700; letter-spacing:.14em; padding:6px 16px; border-radius:999px; margin-bottom:18px; width:max-content; }
+  .k-api { background:#134e4a; color:var(--teal); } .k-bff { background:#4a3a0e; color:var(--amber); }
+  .k-web { background:#2e2566; color:var(--violet); } .k-all { background:#1e3a66; color:var(--blue); }
+  h1 { font-size:68px; line-height:1.08; font-weight:800; letter-spacing:-.01em; }
+  h2 { font-size:58px; line-height:1.1; font-weight:800; margin-bottom:48px; letter-spacing:-.01em; }
+  .sub { color:var(--mute); font-size:30px; margin-top:12px; }
+  .foot { position:absolute; left:96px; right:96px; bottom:30px; display:flex; justify-content:space-between; color:#5f7298; font-size:20px; }
+  .card { background:var(--panel); border:2px solid var(--line); border-radius:20px; padding:34px 38px; }
+  .card h3 { font-size:38px; margin-bottom:22px; }
+  .card li { font-size:31px; line-height:1.42; margin-left:28px; margin-bottom:14px; color:#cfdaf1; }
+  .card li b, li b { color:#fff; }
+  .row { display:flex; gap:28px; } .col { display:flex; flex-direction:column; gap:20px; }
+  .grow { flex:1; }
+  .box { background:var(--panel2); border:2px solid var(--line); border-radius:18px; padding:26px 26px; text-align:center; }
+  .box .t { font-size:34px; font-weight:800; } .box .d { font-size:25px; color:var(--mute); margin-top:8px; line-height:1.35; }
+  .hi { border-color:var(--teal) !important; box-shadow:0 0 0 4px #2dd4bf33; }
+  .arrow { display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--mute); font-size:22px; min-width:150px; text-align:center; }
+  .arrow i { font-style:normal; font-size:54px; color:var(--teal); line-height:1; }
+  .chip { display:inline-block; font-size:27px; padding:10px 20px; border-radius:12px; background:#1b2c4d; border:1.5px solid var(--line); margin:6px 8px 6px 0; color:#d8e3fa; }
+  .chip.g { border-color:#2f7a55; background:#12342a; color:#9bf0c1; } .chip.r { border-color:#8b3347; background:#3a1520; color:#ffb3c1; }
+  .chip.a { border-color:#8a6a1a; background:#3a2d0a; color:#fde08a; } .chip.t { border-color:#1d7f74; background:#0d3532; color:#8ff0e3; }
+  pre { background:#0a1020; border:2px solid var(--line); border-radius:16px; padding:28px 30px; font:25px/1.55 Consolas,"Cascadia Mono",monospace; color:#d6e2ff; white-space:pre; overflow:hidden; }
+  .c-k { color:#c792ea; } .c-t { color:#7fdbca; } .c-s { color:#ecc48d; } .c-c { color:#6b7fa6; font-style:italic; } .c-m { color:#82aaff; }
+  table { border-collapse:collapse; width:100%; font-size:30px; }
+  th,td { border:2px solid var(--line); padding:24px 26px; text-align:left; vertical-align:top; }
+  th { background:#14213d; font-size:26px; color:var(--mute); }
+  tr.win td { background:#0d3532; border-color:var(--teal); }
+  .bad { color:var(--red); } .good { color:var(--green); }
+  .big { font-size:120px; font-weight:800; line-height:1; } .biglbl { font-size:26px; color:var(--mute); margin-top:8px; }
+  .banner { margin-top:30px; padding:24px 34px; border-radius:16px; font-size:33px; text-align:center; font-weight:700; }
+  .banner.t { background:#0d3532; border:2px solid var(--teal); color:#9bf5e8; } .banner.a { background:#3a2d0a; border:2px solid var(--amber); color:#fde08a; }
+  .banner.r { background:#3a1520; border:2px solid var(--red); color:#ffc2cf; }
+  .tight .box { padding:14px 22px; } .tight .box .t { font-size:30px; } .tight .box .d { font-size:22px; margin-top:4px; }
+  .tree { font:25px/1.55 Consolas,monospace; color:#cfdaf1; }
+  .shots { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-top:-14px; }
+  .shots figure { background:var(--panel); border:2px solid var(--line); border-radius:14px; overflow:hidden; }
+  .shots img { width:100%; display:block; height:282px; object-fit:cover; object-position:top; }
+  .shots figcaption { padding:10px 16px; font-size:23px; color:var(--mute); }
+  .bar { height:44px; background:#14213d; border-radius:10px; border:2px solid var(--line); overflow:hidden; position:relative; }
+  .bar span { display:block; height:100%; background:linear-gradient(90deg,var(--violet),var(--teal)); }
+</style>
+</head>
+<body data-slide="1">
+
+<!-- 1 Title -->
+<section class="slide" id="s1" style="justify-content:center">
+  <span class="kick k-all">ARCHITECTURE TOUR</span>
+  <h1>Orders Shop<br>API &rarr; BFF &rarr; React</h1>
+  <p class="sub" style="margin-top:28px;font-size:38px">How it is built, and why. A full-stack system built with AI-assisted development.</p>
+  <div style="margin-top:44px">
+    <span class="chip t">.NET 10</span><span class="chip t">PostgreSQL 18</span><span class="chip a">ASP.NET Core BFF + YARP</span><span class="chip">Valkey 9.1</span><span class="chip" style="border-color:#5b4fb5">React 19 + TypeScript</span>
+  </div>
+  <div style="margin-top:60px;font-size:34px;font-weight:700">Elmor Cabalfin <span style="color:var(--mute);font-weight:400">· Software Engineer, AI-assisted development</span></div>
+  <div class="foot"><span>Proof of concept with production-grade practices</span><span>Voice-over: AI-generated</span></div>
+</section>
+
+<!-- 2 Big picture -->
+<section class="slide" id="s2">
+  <span class="kick k-all">THE BIG PICTURE</span>
+  <h2>One origin for the browser. Tokens stay on the server.</h2>
+  <div class="row" style="align-items:center;margin-top:30px">
+    <div class="box st" data-s="1" style="width:340px"><div class="t">Browser</div><div class="d">React SPA<br>HttpOnly cookie only</div></div>
+    <div class="arrow st" data-s="1"><span>cookie</span><i>&rarr;</i><span>same origin</span></div>
+    <div class="box st hl" data-s="1" data-h="1" style="width:380px;border-color:var(--amber)"><div class="t" style="color:var(--amber)">BFF</div><div class="d">ASP.NET Core 10 + YARP<br>sessions, CSRF, CSP, allow-list</div></div>
+    <div class="arrow st" data-s="2"><span>Bearer JWT</span><i>&rarr;</i><span>server side only</span></div>
+    <div class="box st" data-s="2" style="width:380px;border-color:var(--teal)"><div class="t" style="color:var(--teal)">Orders API</div><div class="d">.NET 10, FastEndpoints<br>business rules, authz, audit</div></div>
+    <div class="arrow st" data-s="2"><span>EF Core</span><i>&rarr;</i><span>+ Dapper</span></div>
+    <div class="box st" data-s="2" style="width:280px"><div class="t">PostgreSQL 18</div><div class="d">system of record</div></div>
+  </div>
+  <div class="row" style="margin-top:44px;padding-left:480px;gap:360px">
+    <div class="box st" data-s="2" style="width:340px"><div class="t">Valkey 9.1</div><div class="d">BFF sessions<br>(encrypted)</div></div>
+    <div class="box st" data-s="2" style="width:340px"><div class="t">Valkey 9.1</div><div class="d">HybridCache L2<br>(products only)</div></div>
+  </div>
+  <div class="banner t st" data-s="3" style="width:max-content;align-self:center;margin-top:44px;font-family:Consolas,monospace">docker compose up -d &nbsp;&nbsp;&middot;&nbsp;&nbsp; API unchanged by the front end</div>
+  <div class="foot"><span>Orders Shop</span><span>2 / 16</span></div>
+</section>
+
+<!-- 3 Workflow -->
+<section class="slide" id="s3">
+  <span class="kick k-all">HOW IT IS BUILT</span>
+  <h2>AI writes fast. Guardrails keep it trustworthy.</h2>
+  <div class="row" style="margin-top:12px">
+    <div class="card grow st" data-s="1"><h3 style="color:var(--blue)">Plan first</h3><ul>
+      <li><b>PRD</b> and user stories with acceptance criteria</li>
+      <li><b>Threat model</b> with numbered threats and tests</li>
+      <li><b>15 ADRs</b>: options, decision, consequences</li>
+      <li><b>Permission matrix</b> and endpoint catalog</li>
+      <li>Data model with indexes, views and DB roles</li></ul></div>
+    <div class="card grow st" data-s="2"><h3 style="color:var(--teal)">Enforced, not hoped for</h3><ul>
+      <li><b>Architecture tests</b> (ArchUnitNET) fail on layer breaks</li>
+      <li><b>Banned APIs</b>: DateTime.UtcNow, ExecuteDelete, Thread.Sleep</li>
+      <li>Warnings are errors; format check in CI</li>
+      <li><b>Definition of Done</b> per endpoint</li>
+      <li><b>Fresh-context reviewer agents</b> for code and security</li></ul></div>
+  </div>
+  <div class="banner a st" data-s="2" style="margin-top:34px">Decisions are made by people. The AI does the typing.</div>
+  <div class="foot"><span>Orders Shop</span><span>3 / 16</span></div>
+</section>
+
+<!-- 4 Clean architecture -->
+<section class="slide" id="s4">
+  <span class="kick k-api">API</span>
+  <h2>Clean Architecture for projects, vertical slices for folders</h2>
+  <div class="row" style="margin-top:10px">
+    <div class="col st tight" data-s="1" style="width:760px;gap:14px">
+      <div class="box" style="border-color:var(--teal)"><div class="t">DemoApi.Api</div><div class="d">only composition root &middot; endpoints &middot; request DTOs</div></div>
+      <div class="box"><div class="t">DemoApi.Infrastructure</div><div class="d">EF Core, Npgsql, Dapper, cache, JWT, email</div></div>
+      <div class="box"><div class="t">DemoApi.Application</div><div class="d">handlers, response DTOs &middot; no Infrastructure, no Npgsql</div></div>
+      <div class="box"><div class="t">DemoApi.Domain</div><div class="d">entities and rules</div></div>
+      <div class="row"><div class="box grow"><div class="t" style="font-size:25px">SharedKernel</div><div class="d">BCL only</div></div><div class="box grow"><div class="t" style="font-size:25px">BuildingBlocks</div><div class="d">no domain refs</div></div></div>
+    </div>
+    <div class="card grow st hl" data-s="2" data-h="2">
+      <h3>First folder = business feature</h3>
+      <div class="tree">Features/<br>&nbsp;&nbsp;Products/<br>&nbsp;&nbsp;Customers/<br>&nbsp;&nbsp;Orders/<br>&nbsp;&nbsp;Reports/<br>&nbsp;&nbsp;Auth/<br>&nbsp;&nbsp;AdminUsers/</div>
+      <p style="margin-top:18px;font-size:26px;color:var(--mute)">No <code>Commands/</code> or <code>Handlers/</code> folders. Features never reference each other.</p>
+      <div style="margin-top:14px"><span class="chip g">Architecture tests fail the build</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; API</span><span>4 / 16</span></div>
+</section>
+
+<!-- 5 Request flow -->
+<section class="slide" id="s5">
+  <span class="kick k-api">API</span>
+  <h2>A thin endpoint, a command, a handler, a Result</h2>
+  <div class="row" style="margin-top:6px">
+    <pre class="st hl" data-s="1" data-h="1" style="width:1020px;font-size:24px"><span class="c-k">public sealed class</span> <span class="c-t">CreateProductEndpoint</span>
+    : Endpoint&lt;CreateProductRequest, ProductResponse&gt;
+{
+    <span class="c-k">public override void</span> <span class="c-m">Configure</span>()
+    {
+        <span class="c-m">Post</span>(<span class="c-s">"/products"</span>);
+        <span class="c-m">Policies</span>(AuthPolicies.AdminOnly);
+        <span class="c-m">Summary</span>(s =&gt; { s.Summary = <span class="c-s">"Create a product"</span>; ... });
+    }
+
+    <span class="c-k">public override async</span> Task <span class="c-m">HandleAsync</span>(
+        CreateProductRequest r, CancellationToken ct) =&gt;
+        <span class="c-k">await</span> Send.ResultAsync((<span class="c-k">await new</span> CreateProductCommand(
+            r.Name, r.Sku, r.Description, r.Price, r.StockQuantity)
+            .<span class="c-m">ExecuteAsync</span>(ct)).<span class="c-m">ToCreated</span>(HttpContext));
+}</pre>
+    <div class="col grow st" data-s="2">
+      <div class="box"><div class="t">Validator</div><div class="d">input shape (FluentValidation)</div></div>
+      <div class="box"><div class="t">Command bus</div><div class="d">FastEndpoints.Messaging.Core only</div></div>
+      <div class="box"><div class="t">Handler (Application)</div><div class="d">domain methods &middot; SaveChanges &middot; <b>Result&lt;T&gt;</b></div></div>
+      <div class="box" style="border-color:var(--teal)"><div class="t">ToCreated / ToOk</div><div class="d">one mapping &rarr; HTTP + ProblemDetails</div></div>
+      <div class="chip a" style="text-align:center">Reads: IQueryHandler &rarr; EF AsNoTracking or Dapper</div>
+    </div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; API &middot; real code from ProductEndpoints.cs</span><span>5 / 16</span></div>
+</section>
+
+<!-- 6 Data -->
+<section class="slide" id="s6">
+  <span class="kick k-api">API &middot; DATA</span>
+  <h2>PostgreSQL 18: EF Core writes, Dapper reads</h2>
+  <div class="row" style="margin-top:8px">
+    <div class="card grow st" data-s="1"><h3 style="color:var(--blue)">Two tools, clear roles</h3><ul>
+      <li><b>EF Core</b>: all writes, migrations, Identity</li>
+      <li><b>Dapper</b>: views, report functions, one procedure</li>
+      <li>EF migrations own every schema object</li>
+      <li>Dates <code>timestamptz</code> UTC; money <code>numeric(12,2)</code></li></ul></div>
+    <div class="card grow st" data-s="2"><h3 style="color:var(--red)">Never delete rows</h3><ul>
+      <li>Soft delete via interceptor + query filters</li>
+      <li>App DB role has <b>no DELETE privilege</b></li>
+      <li>Audit row written in the <b>same transaction</b></li>
+      <li><code>[PersonalData]</code> values never audited</li></ul></div>
+    <div class="card grow st" data-s="3"><h3 style="color:var(--amber)">Concurrency by design</h3><ul>
+      <li>ETag from <code>xmin</code>; PUT needs <code>If-Match</code></li>
+      <li>428 if missing, 412 if stale</li>
+      <li><code>SELECT &hellip; FOR UPDATE</code> in product ID order</li>
+      <li>No deadlocks by construction</li></ul></div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; API &middot; ADR-0004, 0006, 0007</span><span>6 / 16</span></div>
+</section>
+
+<!-- 7 Security + resilience -->
+<section class="slide" id="s7">
+  <span class="kick k-api">API &middot; SECURITY &amp; RESILIENCE</span>
+  <h2>Own JWT issuer, deny by default, one retry layer</h2>
+  <div class="row" style="margin-top:8px">
+    <div class="card grow st" data-s="1"><h3 style="color:var(--teal)">Tokens</h3><ul>
+      <li>HS256 access JWT, <b>15 minutes</b></li>
+      <li>Refresh tokens <b>hashed</b>, rotated on every use</li>
+      <li>Reuse revokes the <b>whole family</b></li>
+      <li>No <code>MapIdentityApi</code>: our own issuer</li></ul></div>
+    <div class="card grow st" data-s="2"><h3 style="color:var(--violet)">Authorization</h3><ul>
+      <li>Fallback policy: authenticated</li>
+      <li><b>Four named policies</b>, one per endpoint</li>
+      <li>Other customer's data &rarr; <b>404, not 403</b></li>
+      <li>3 rate-limit policies; 429 before 401</li></ul></div>
+    <div class="card grow st" data-s="3"><h3 style="color:var(--amber)">Resilience</h3><ul>
+      <li>HybridCache + Valkey: <b>products only</b></li>
+      <li>Valkey down &rarr; no 5xx</li>
+      <li>EF retry is the <b>only</b> DB retry layer</li>
+      <li>Circuit breaker &rarr; 503 fast; OpenTelemetry</li></ul></div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; API &middot; ADR-0008, 0009, 0010, 0011, 0014</span><span>7 / 16</span></div>
+</section>
+
+<!-- 8 BFF options -->
+<section class="slide" id="s8">
+  <span class="kick k-bff">BFF</span>
+  <h2>Why a Backend-for-Frontend (ADR-0015)</h2>
+  <table class="st" data-s="1">
+    <tr><th style="width:360px">Option</th><th>Good</th><th>Bad</th></tr>
+    <tr><td><b>Next.js</b> server as BFF</td><td>One TypeScript app, SSR</td><td class="bad">Node runtime + monthly patch routine; auth logic beside a .NET API</td></tr>
+    <tr><td><b>SPA alone</b>, tokens in memory</td><td>No extra server</td><td class="bad">Tokens reach the browser; CORS; every tab refreshes and trips reuse detection</td></tr>
+    <tr class="win st" data-s="2" id="win"><td><b>SPA + ASP.NET Core BFF</b> (YARP)</td><td class="good">Tokens stay server-side; same origin, no CORS; no Node in production; same .NET pipeline</td><td>New security-critical code; one more container</td></tr>
+  </table>
+  <div class="banner t st" data-s="2" style="margin-top:36px">Decision driver: no token in the browser, and no API code change</div>
+  <div class="foot"><span>Orders Shop &middot; BFF</span><span>8 / 16</span></div>
+</section>
+
+<!-- 9 Session -->
+<section class="slide" id="s9">
+  <span class="kick k-bff">BFF &middot; SESSION</span>
+  <h2>One opaque cookie. Tokens live in Valkey.</h2>
+  <div class="row" style="align-items:center;margin-top:10px">
+    <div class="box st" data-s="1" style="width:300px"><div class="t">SPA</div><div class="d">POST /bff/login<br>X-CSRF: 1</div></div>
+    <div class="arrow st" data-s="1"><i>&rarr;</i></div>
+    <div class="box st" data-s="1" style="width:330px;border-color:var(--amber)"><div class="t" style="color:var(--amber)">BFF</div><div class="d">calls API login, then /me</div></div>
+    <div class="arrow st" data-s="1"><i>&rarr;</i></div>
+    <div class="box st" data-s="1" style="width:420px"><div class="t">Valkey</div><div class="d">bff:session:{id}<br>access + refresh tokens,<br>encrypted (Data Protection)</div></div>
+  </div>
+  <div class="card st" data-s="1" style="margin-top:34px"><h3>Set-Cookie: __Host-demoapi</h3>
+    <span class="chip g">HttpOnly</span><span class="chip g">Secure</span><span class="chip g">SameSite=Strict</span><span class="chip g">Path=/</span><span class="chip g">no Domain</span><span class="chip">value = opaque session key, never a token</span></div>
+  <div class="row st" data-s="2" style="margin-top:28px">
+    <div class="banner t grow" style="margin:0">Injected script? No token to steal.</div>
+    <div class="banner a grow" style="margin:0">Admin idle timeout: 30 min</div>
+    <div class="banner r grow" style="margin:0;background:#3a1520">Change password or delete account ends the session</div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; BFF &middot; ADR-0015</span><span>9 / 16</span></div>
+</section>
+
+<!-- 10 Single flight -->
+<section class="slide" id="s10">
+  <span class="kick k-bff">BFF &middot; SINGLE-FLIGHT REFRESH</span>
+  <h2>20 parallel requests, exactly one refresh</h2>
+  <div class="row" style="margin-top:6px">
+    <div class="card grow st" data-s="1" style="border-color:var(--red)"><h3 style="color:var(--red)">The hazard</h3><ul>
+      <li>Refresh tokens rotate; <b>a second use = theft</b></li>
+      <li>Token expiring &rarr; 20 requests each refresh</li>
+      <li>API revokes the family &rarr; <b>user signed out</b></li>
+      <li>Retrying a refresh is just as dangerous</li></ul></div>
+    <div class="col st" data-s="2" style="width:1000px">
+      <pre class="hi"><span class="c-k">private readonly</span> ConcurrentDictionary&lt;<span class="c-k">string</span>,
+    Lazy&lt;Task&lt;RefreshOutcome&gt;&gt;&gt; inflight = <span class="c-k">new</span>();
+
+Lazy&lt;Task&lt;RefreshOutcome&gt;&gt; flight =
+    inflight.<span class="c-m">GetOrAdd</span>(sessionId, candidate);
+
+<span class="c-c">// Only this caller's wait is cancellable.</span>
+<span class="c-c">// The refresh itself keeps running.</span>
+<span class="c-k">return await</span> flight.Value.<span class="c-m">WaitAsync</span>(ct);</pre>
+      <div class="banner t" style="margin:0;font-size:27px">One flight per session &middot; no retry &middot; never cancelled by a browser abort</div>
+      <div class="chip g" style="font-size:25px">Test: Twenty_parallel_requests_cause_exactly_one_refresh</div>
+    </div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; BFF &middot; real code from RefreshCoordinator.cs</span><span>10 / 16</span></div>
+</section>
+
+<!-- 11 Proxy, CSRF, headers -->
+<section class="slide" id="s11">
+  <span class="kick k-bff">BFF &middot; PROXY &amp; HARDENING</span>
+  <h2>YARP allow-list, CSRF, CSP, rate limits, traces</h2>
+  <div class="row" style="margin-top:6px">
+    <div class="card grow st" data-s="1"><h3 style="color:var(--amber)">YARP proxy</h3><ul>
+      <li>Explicit routes and methods from the endpoint catalog</li>
+      <li>Unknown path &rarr; <b>404</b>, never index.html</li>
+      <li>Login / refresh / logout <b>never proxied</b></li>
+      <li>Strip browser <code>Cookie</code>, add <code>Authorization: Bearer</code></li>
+      <li>Strip upstream <code>Set-Cookie</code></li></ul></div>
+    <div class="card grow st" data-s="2"><h3 style="color:var(--teal)">Browser-facing defenses</h3><ul>
+      <li><b>CSRF</b>: <code>X-CSRF: 1</code> + matching <code>Origin</code></li>
+      <li><b>CSP</b> <code>script-src 'self'</code>, frame-ancestors none</li>
+      <li>nosniff, no-referrer, Permissions-Policy</li>
+      <li>Per-IP rate limits: 10 / min auth, 30 / min refresh</li>
+      <li><code>traceparent</code> forwarded: one trace, BFF to API</li></ul></div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; BFF &middot; ADR-0015 + amendment 1</span><span>11 / 16</span></div>
+</section>
+
+<!-- 12 React stack -->
+<section class="slide" id="s12">
+  <span class="kick k-web">REACT</span>
+  <h2>Vite + React 19, feature-first, small bundles</h2>
+  <div class="row" style="margin-top:4px">
+    <div class="col grow">
+      <div class="card st" data-s="1"><h3 style="color:var(--violet)">Build and language</h3>
+        <span class="chip">Vite 8</span><span class="chip">React 19.3</span><span class="chip t">React Compiler</span><span class="chip">TypeScript 6 strict</span><span class="chip">React Router 8 &middot; lazy routes</span></div>
+      <div class="card st" data-s="2"><h3 style="color:var(--violet)">Data, forms, UI</h3>
+        <span class="chip">TanStack Query</span><span class="chip">React Hook Form</span><span class="chip">Zod 4</span><span class="chip">Tailwind 4</span><span class="chip">shadcn + Radix</span></div>
+    </div>
+    <div class="card st" data-s="3" style="width:760px"><h3>Feature folders</h3>
+      <div class="tree" style="font-size:24px">src/features/<br>&nbsp;&nbsp;auth/ catalog/ cart/<br>&nbsp;&nbsp;orders/ profile/<br>&nbsp;&nbsp;admin/ <span class="c-c">&larr; lazy chunk</span></div>
+      <p style="font-size:24px;color:var(--mute);margin:12px 0 10px">ESLint blocks cross-feature imports</p>
+      <div class="bar"><span style="width:80%"></span></div>
+      <p style="font-size:26px;margin-top:8px"><b>159.7 KB</b> gzip initial JS <span style="color:var(--mute)">of 200 KB budget</span></p></div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; React SPA &middot; frontend-architecture.md</span><span>12 / 16</span></div>
+</section>
+
+<!-- 13 Types and errors -->
+<section class="slide" id="s13">
+  <span class="kick k-web">REACT &middot; CONTRACT</span>
+  <h2>One contract from API to UI</h2>
+  <div class="row st" data-s="1" style="align-items:center;margin-top:10px">
+    <div class="box" style="width:360px"><div class="t">v1.json</div><div class="d">committed OpenAPI</div></div>
+    <div class="arrow" style="min-width:110px"><i>&rarr;</i></div>
+    <div class="box" style="width:400px"><div class="t">openapi-typescript</div><div class="d">schema.d.ts (generated)</div></div>
+    <div class="arrow" style="min-width:110px"><i>&rarr;</i></div>
+    <div class="box" style="width:380px"><div class="t">openapi-fetch</div><div class="d">typed client + middleware</div></div>
+  </div>
+  <div class="banner a st" data-s="1" style="margin-top:26px;font-size:27px">CI regenerates the types and fails on <code>git diff</code>: drift is caught at build time</div>
+  <div class="row st" data-s="2" style="margin-top:30px">
+    <pre class="grow" style="font-size:23px"><span class="c-c">// API error (ProblemDetails)</span>
+{ <span class="c-t">"type"</span>: <span class="c-s">".../problems/duplicate-sku"</span>,
+  <span class="c-t">"status"</span>: 409,
+  <span class="c-t">"traceId"</span>: <span class="c-s">"00-4bf9..."</span> }</pre>
+    <div class="col grow" style="justify-content:center">
+      <div class="chip t" style="font-size:26px">slug &rarr; plain message in the UI</div>
+      <div class="chip g" style="font-size:26px">Zod schemas mirror API validation</div>
+      <div class="chip a" style="font-size:26px">Edits send ETag as If-Match</div></div>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; React SPA</span><span>13 / 16</span></div>
+</section>
+
+<!-- 14 Screens -->
+<section class="slide" id="s14">
+  <span class="kick k-web">RUNNING</span>
+  <h2>The real app, against the real API</h2>
+  <div class="shots">
+    <figure><img src="../thumbnail/screenshot-01-catalog.png"><figcaption>Catalog (customer)</figcaption></figure>
+    <figure><img src="../thumbnail/screenshot-02-order-placed.png"><figcaption>Order placed</figcaption></figure>
+    <figure><img src="../thumbnail/screenshot-03-delete-account.png"><figcaption>Delete account</figcaption></figure>
+    <figure><img src="../thumbnail/screenshot-04-back-office-dashboard.png"><figcaption>Back office dashboard (Admin)</figcaption></figure>
+    <figure><img src="../thumbnail/screenshot-05-admin-products.png"><figcaption>Product management (Admin)</figcaption></figure>
+    <figure style="display:flex;align-items:center;justify-content:center;padding:20px"><div style="font-size:30px;line-height:1.4;text-align:center;color:var(--mute)">Full click-through:<br><b style="color:var(--text)">Orders Shop web demo</b><br>(separate video)</div></figure>
+  </div>
+  <div class="foot"><span>Orders Shop &middot; demo data, local Docker</span><span>14 / 16</span></div>
+</section>
+
+<!-- 15 Quality -->
+<section class="slide" id="s15">
+  <span class="kick k-all">QUALITY</span>
+  <h2>Tested in layers, enforced in the pipeline</h2>
+  <div class="row st" data-s="1" style="gap:40px;margin-top:6px">
+    <div class="card grow" style="text-align:center"><div class="big" style="color:var(--amber)">97</div><div class="biglbl">BFF tests<br>(incl. in-process fake API)</div></div>
+    <div class="card grow" style="text-align:center"><div class="big" style="color:var(--violet)">232</div><div class="biglbl">SPA unit + component tests</div></div>
+    <div class="card grow" style="text-align:center"><div class="big" style="color:var(--teal)">40</div><div class="biglbl">Playwright e2e<br>with axe accessibility scans</div></div>
+    <div class="card grow" style="text-align:center;display:flex;flex-direction:column;justify-content:center"><div style="font-size:30px;font-weight:800;color:var(--blue)">API</div><div class="biglbl" style="line-height:1.5">unit &middot; integration<br>(Testcontainers + PostgreSQL)<br>architecture rules</div></div>
+  </div>
+  <div class="card st" data-s="2" style="margin-top:30px"><h3>Azure Pipelines</h3>
+    <span class="chip r">API freeze check</span><span class="chip">typecheck</span><span class="chip">lint, 0 warnings</span><span class="chip">format check</span><span class="chip">type-drift check</span><span class="chip a">bundle budget</span><span class="chip">npm audit</span><span class="chip">license check</span><span class="chip">Docker builds</span><span class="chip g">E2E on compose</span></div>
+  <div class="foot"><span>Orders Shop &middot; security reviews of the BFF and SPA are in the repo</span><span>15 / 16</span></div>
+</section>
+
+<!-- 16 Close -->
+<section class="slide" id="s16" style="justify-content:center">
+  <span class="kick k-all">WHAT YOU GET</span>
+  <h1 style="margin-bottom:34px">Speed, without a codebase<br>nobody understands.</h1>
+  <div class="row st" data-s="1" style="gap:28px">
+    <div class="card grow"><h3 style="color:var(--blue)">Documented</h3><p style="font-size:26px;color:#cfdaf1">Every decision in an ADR, with the options that lost.</p></div>
+    <div class="card grow"><h3 style="color:var(--teal)">Tested</h3><p style="font-size:26px;color:#cfdaf1">Every rule has a test; architecture is enforced by the build.</p></div>
+    <div class="card grow"><h3 style="color:var(--amber)">Reviewed</h3><p style="font-size:26px;color:#cfdaf1">Fresh-context code and security reviews before merge.</p></div>
+  </div>
+  <p class="st" data-s="2" style="margin-top:40px;font-size:30px;color:var(--mute)">Status: proof of concept on a feature branch, to be merged to main after final review. Admin orders, reports and audit-log screens are next.</p>
+  <div class="st" data-s="2" style="margin-top:28px;font-size:40px;font-weight:700">Elmor Cabalfin <span style="color:var(--teal)">&middot; Let's talk</span></div>
+  <div class="foot"><span>Voice-over: AI-generated (stock neural voice)</span><span>16 / 16</span></div>
+</section>
+
+<script>
+  window.show = function (slide, step) {
+    document.body.dataset.slide = String(slide);
+    const root = document.getElementById('s' + slide);
+    root.querySelectorAll('.st').forEach(function (el) {
+      el.classList.toggle('on', Number(el.dataset.s) <= step);
+    });
+    root.querySelectorAll('[data-h]').forEach(function (el) {
+      el.classList.toggle('hi', Number(el.dataset.h) === step);
+    });
+    return true;
+  };
+</script>
+</body>
+</html>

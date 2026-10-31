@@ -27,3 +27,23 @@ Automated: `check_video.py` PASS (0 high, 1 warning). Contact sheets in `exports
 **Result:** Pass
 
 **Notes:** the confirm and reset links are read from the API log (the dev stack's fake e-mail sender); the narration says so. The Edge neural voice is a Microsoft cloud service (the narration text is sent to it); licence terms for publishing should be recorded in `marketing/legal-check.md` by `market-legal-check` before anything is public.
+
+---
+
+# Demo quality check: architecture tour
+
+Video: `exports/orders-architecture-demo.mp4` | SHA-256: `f2425af9d36466aaacef80fb4cb4bb64e97345af2d8e83da55c3a9d788165e0f` | Checked: 2026-10-31 | Content: slides (HTML rendered at 1920x1080) plus real code and the existing app screenshots, no live recording
+
+| # | Check | Severity | Result | Notes |
+|---|---|---|---|---|
+| 1 | Planned content shown | High | Pass | 16 slides, 33 narration segments (API, BFF, React, quality, close) |
+| 2 | Claims true | High | Pass | Numbers from 00-summary.md (BFF 97, SPA 232, e2e 40, 159.7 KB of 200), ADR-0001..0015, `Twenty_parallel_requests_cause_exactly_one_refresh` exists, code excerpts copied from `ProductEndpoints.cs` and `RefreshCoordinator.cs` (lines wrapped only) |
+| 3 | No private data / secrets | High | Pass | Screenshots reuse the already-checked example.test addresses; no tokens, paths or machine names |
+| 4 | Captions | High | Pass | `.srt` and `.vtt`, soft track in MP4, spoken-form words fixed (EF Core, ID, IP) |
+| 5 | H.264, yuv420p, AAC 48 kHz, faststart | High | Pass | 1920x1080, 30 fps, 523.5 s |
+| 6 | Loudness | Medium | Pass | -16.1 LUFS; no silence over 2.5 s |
+| 7 | Sync | Medium | Pass | Frame at 335 s shows the slide matching the narration |
+| 8 | AI voice disclosed | Medium | Pass | Title and end card, Loom description |
+| 9 | Status honest | High | Pass | Closing (re-recorded 2026-10-31) says proof of concept on a feature branch, to be merged to main after final review |
+
+**Result:** Pass. Not yet reviewed by `market-reviewer`; the user approved the upload on 2026-10-31 without that review.

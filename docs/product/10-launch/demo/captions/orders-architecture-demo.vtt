@@ -1,0 +1,301 @@
+WEBVTT
+
+00:00:00.350 --> 00:00:01.357
+Hi, I'm Elmor.
+
+00:00:01.357 --> 00:00:11.137
+This is a tour of the architecture behind Orders Shop: a .NET 10 API, an ASP.NET Core backend for frontend, and a React single page app.
+
+00:00:11.137 --> 00:00:20.198
+I built it with AI assisted development, and I'll show you how the decisions, the tests, and the reviews keep that speed safe.
+
+00:00:21.148 --> 00:00:23.135
+Here is the whole system.
+
+00:00:23.135 --> 00:00:27.030
+The browser talks to exactly one server, the BFF.
+
+00:00:27.030 --> 00:00:29.812
+All it holds is an HttpOnly cookie.
+
+00:00:30.762 --> 00:00:37.461
+The BFF keeps the session in Valkey, and forwards allow listed calls to the Orders API.
+
+00:00:37.461 --> 00:00:41.850
+The API owns the business rules, and talks to PostgreSQL.
+
+00:00:42.800 --> 00:00:46.165
+The whole stack starts with one docker compose command.
+
+00:00:46.165 --> 00:00:49.592
+And the API did not change when the front end was added.
+
+00:00:50.542 --> 00:00:52.873
+Before any code, there is a plan.
+
+00:00:52.873 --> 00:00:57.960
+Requirements, a threat model, and fifteen architecture decision records.
+
+00:00:57.960 --> 00:01:01.846
+Each one compares options, and writes down why one won.
+
+00:01:02.796 --> 00:01:06.889
+The AI writes code quickly, so the guardrails are strict.
+
+00:01:06.889 --> 00:01:08.254
+Architecture tests.
+
+00:01:08.254 --> 00:01:10.552
+Banned APIs that fail the build.
+
+00:01:10.552 --> 00:01:16.225
+And a fresh context review by separate reviewer agents, before anything merges.
+
+00:01:16.225 --> 00:01:19.600
+The decisions are mine and the product owner's.
+
+00:01:19.600 --> 00:01:21.252
+The AI does the typing.
+
+00:01:22.202 --> 00:01:28.567
+The API uses Clean Architecture for the projects, and vertical slices for the folders.
+
+00:01:28.567 --> 00:01:35.450
+Domain, Application, Infrastructure, and one API project, which is the only composition root.
+
+00:01:36.400 --> 00:01:42.702
+Inside each project, the first folder is the business feature: Products, Customers, Orders.
+
+00:01:42.702 --> 00:01:49.696
+Features never reference each other, and architecture tests fail the build if a layer rule is broken.
+
+00:01:50.646 --> 00:01:54.216
+A request enters a thin FastEndpoints endpoint.
+
+00:01:54.216 --> 00:01:55.507
+Look at this one.
+
+00:01:55.507 --> 00:02:02.190
+A route, an explicit auth policy, an OpenAPI summary, and one line that sends a command.
+
+00:02:03.140 --> 00:02:08.776
+The handler depends only on a messaging package, never on the web framework.
+
+00:02:08.776 --> 00:02:15.375
+It returns a Result, and one extension maps that to HTTP, with ProblemDetails for errors.
+
+00:02:15.375 --> 00:02:19.676
+Reads skip the bus, and use EF Core projections or Dapper.
+
+00:02:20.626 --> 00:02:24.160
+PostgreSQL eighteen is the single database.
+
+00:02:24.160 --> 00:02:28.105
+EF Core handles every write and every migration.
+
+00:02:28.105 --> 00:02:34.762
+Dapper handles the views and report functions, where hand written SQL beats LINQ.
+
+00:02:35.712 --> 00:02:37.276
+Rows are never deleted.
+
+00:02:37.276 --> 00:02:45.708
+Soft delete is enforced by an interceptor, and by the database itself, because the application role has no DELETE privilege.
+
+00:02:45.708 --> 00:02:52.848
+An audit interceptor writes the audit row in the same transaction, and never stores personal data values.
+
+00:02:53.798 --> 00:02:55.637
+Concurrency is explicit.
+
+00:02:55.637 --> 00:03:01.615
+Entity tags come from the PostgreSQL xmin column, so updates require If-Match.
+
+00:03:01.615 --> 00:03:09.662
+Orders lock stock rows with SELECT FOR UPDATE, always in product ID order, so deadlocks are designed out.
+
+00:03:10.612 --> 00:03:13.701
+Authentication is our own JWT issuer.
+
+00:03:13.701 --> 00:03:16.624
+Access tokens last fifteen minutes.
+
+00:03:16.624 --> 00:03:24.556
+Refresh tokens are hashed, rotate on every use, and reusing one revokes the whole token family.
+
+00:03:25.506 --> 00:03:30.043
+Authorization is deny by default, with four named policies.
+
+00:03:30.043 --> 00:03:36.349
+A customer asking for someone else's data gets a 404, not a 403, so nothing leaks.
+
+00:03:36.349 --> 00:03:40.578
+Three rate limit policies protect the sensitive routes.
+
+00:03:41.528 --> 00:03:48.277
+Only products are cached, with HybridCache and Valkey, and a Valkey outage never causes an error.
+
+00:03:48.277 --> 00:03:56.696
+Each dependency has exactly one retry layer, the database has a circuit breaker, and OpenTelemetry traces the whole path.
+
+00:03:57.646 --> 00:03:58.814
+Now the BFF.
+
+00:03:58.814 --> 00:04:01.246
+I compared three options.
+
+00:04:01.246 --> 00:04:03.484
+Next.js as the backend.
+
+00:04:03.484 --> 00:04:07.571
+A plain single page app that holds tokens.
+
+00:04:07.571 --> 00:04:10.198
+Or a thin ASP.NET Core BFF.
+
+00:04:11.148 --> 00:04:15.962
+The BFF won for one reason: tokens never reach the browser.
+
+00:04:15.962 --> 00:04:24.612
+It also gives one origin, so no CORS, no Node server in production, and the same .NET pipeline as the API.
+
+00:04:25.562 --> 00:04:34.257
+On sign in, the BFF calls the API and stores the tokens in a Valkey session, encrypted with Data Protection.
+
+00:04:34.257 --> 00:04:36.511
+The browser gets one cookie.
+
+00:04:36.511 --> 00:04:43.274
+It is HttpOnly, Secure, SameSite Strict, and uses the double underscore Host prefix.
+
+00:04:44.224 --> 00:04:49.793
+So even if a script were injected into the page, there is no token for it to steal.
+
+00:04:49.793 --> 00:04:53.752
+Admin sessions also end after thirty minutes of inactivity.
+
+00:04:54.702 --> 00:04:56.621
+Here is the trickiest part.
+
+00:04:56.621 --> 00:05:00.601
+The API treats a second use of a refresh token as theft.
+
+00:05:00.601 --> 00:05:09.486
+If a page fires twenty requests while the token is expiring, a naive client triggers a refresh storm, and signs the user out.
+
+00:05:10.436 --> 00:05:14.630
+The BFF solves it with a single flight refresh coordinator.
+
+00:05:14.630 --> 00:05:19.961
+One refresh runs per session, and every other request awaits the same task.
+
+00:05:19.961 --> 00:05:25.292
+A test proves that twenty parallel requests cause exactly one refresh call.
+
+00:05:26.242 --> 00:05:29.852
+The proxy is YARP with an explicit allow list.
+
+00:05:29.852 --> 00:05:31.814
+Unknown paths return 404.
+
+00:05:31.814 --> 00:05:34.639
+Login and refresh are never proxied.
+
+00:05:34.639 --> 00:05:41.074
+The BFF strips the browser's cookie, and adds the bearer token on the way through.
+
+00:05:42.024 --> 00:05:48.249
+Every state changing request needs a custom X-CSRF header and a matching Origin.
+
+00:05:48.249 --> 00:05:59.376
+A strict content security policy blocks inline scripts, rate limits apply per IP at the edge, and one trace ID flows from the BFF into the API.
+
+00:06:00.326 --> 00:06:07.554
+The front end is Vite and React nineteen with the React Compiler, so there is no manual memoization.
+
+00:06:07.554 --> 00:06:12.542
+TypeScript runs in strict mode, and React Router loads routes lazily.
+
+00:06:13.492 --> 00:06:16.229
+Server state lives in TanStack Query.
+
+00:06:16.229 --> 00:06:18.818
+Forms use React Hook Form with Zod.
+
+00:06:18.818 --> 00:06:24.292
+Styling is Tailwind four, with accessible Radix primitives through shadcn.
+
+00:06:25.242 --> 00:06:31.224
+Code is organized by feature, and lint rules stop one feature importing another's internals.
+
+00:06:31.224 --> 00:06:33.630
+The Admin area is its own lazy chunk.
+
+00:06:33.630 --> 00:06:42.018
+The customer bundle is about one hundred sixty kilobytes gzipped, under a two hundred kilobyte budget that the pipeline enforces.
+
+00:06:42.968 --> 00:06:49.332
+API types are generated from the committed OpenAPI document, and the pipeline fails if they drift.
+
+00:06:49.332 --> 00:06:55.112
+So a backend change that breaks the front end is caught at build time, not in production.
+
+00:06:56.062 --> 00:07:02.966
+Errors arrive as ProblemDetails with a trace ID, and a slug maps to a plain message in the UI.
+
+00:07:02.966 --> 00:07:09.430
+Product edits send the entity tag back as If-Match, so the API can reject stale updates.
+
+00:07:10.380 --> 00:07:18.683
+And here it is working: the catalog, an order placed, the account deletion flow, the admin dashboard, and product management.
+
+00:07:18.683 --> 00:07:21.406
+All against the real API, with demo data.
+
+00:07:21.406 --> 00:07:25.524
+There is a separate walkthrough video if you want every click.
+
+00:07:26.474 --> 00:07:27.940
+Quality is layered.
+
+00:07:27.940 --> 00:07:30.331
+The BFF has ninety seven tests.
+
+00:07:30.331 --> 00:07:38.509
+The React app has two hundred thirty two, plus forty end to end Playwright tests with accessibility scans.
+
+00:07:38.509 --> 00:07:46.610
+The API has unit tests, integration tests on real PostgreSQL with Testcontainers, and architecture tests.
+
+00:07:47.560 --> 00:07:58.896
+Azure Pipelines enforces it: an API freeze check, type checks, lint with zero warnings, bundle budgets, dependency audits, license checks, and Docker builds.
+
+00:07:58.896 --> 00:08:04.456
+The security reviews of the BFF and the front end are written up in the repo.
+
+00:08:05.406 --> 00:08:08.248
+What does this mean for you as a client?
+
+00:08:08.248 --> 00:08:11.729
+AI assisted development gets features built fast.
+
+00:08:11.729 --> 00:08:17.768
+But every decision is documented, every rule is tested, and every change is reviewed.
+
+00:08:17.768 --> 00:08:21.534
+You get speed, without a codebase nobody understands.
+
+00:08:22.484 --> 00:08:27.016
+To be clear, this is a proof of concept, built to show the approach.
+
+00:08:27.016 --> 00:08:32.015
+It lives on a feature branch and will be merged to main after final review.
+
+00:08:32.015 --> 00:08:36.280
+The Admin screens for orders, reports, and audit logs come next.
+
+00:08:36.280 --> 00:08:40.279
+If you want this level of rigor on your product, let's talk.
+
+00:08:40.279 --> 00:08:41.612
+Thanks for watching.
