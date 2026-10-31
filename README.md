@@ -2,13 +2,17 @@
 
 A .NET 10 REST API for managing products, customers and orders, with **Admin** and **Customer** roles. It is a proof of concept built with production-grade practices: Clean Architecture with vertical slices, CQRS, soft delete and an audit trail, rotated refresh tokens, rate limiting, caching and a full test pyramid.
 
-There is no UI. The API is documented with OpenAPI and browsable with Scalar.
+The API itself has no UI; a separate React web front end sits behind an ASP.NET Core BFF (see the demo videos below). The API is documented with OpenAPI and browsable with Scalar.
 
 ## Demo video
 
 **[Orders API: walkthrough in Scalar](https://www.loom.com/share/080eb5eb165e4b348c97391de56e3aa7)**
 
 A narrated walkthrough (about 1 min 45 s) of the running API in the Scalar UI. It checks the health endpoints, signs in as Admin to get a bearer token, then calls the products, customers and orders endpoints with that token.
+
+**[Orders Shop web: React front end demo](https://www.loom.com/share/6a5947ed42944354bd3e15c2c57c2def)**
+
+A narrated walkthrough (about 5 min 20 s) of the React web front end (web 0.1.0) running against the API with demo data. It covers the customer portal (sign-up and email confirmation, catalog search and filters, cart, placing and cancelling orders, profile, password change and reset, account deletion) and the first part of the back office (dashboard and product management). The customer, order, report, user and audit-log admin screens are not built yet. The voice is AI-generated.
 
 ## Contents
 

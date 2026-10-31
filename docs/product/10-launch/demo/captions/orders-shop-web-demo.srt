@@ -1,0 +1,362 @@
+1
+00:00:00,400 --> 00:00:04,800
+Welcome to Orders Shop, the web front
+end for the Orders API.
+
+2
+00:00:04,800 --> 00:00:09,128
+This tour uses the real app, running
+locally with demo data.
+
+3
+00:00:09,128 --> 00:00:13,528
+We start as a customer, and then
+switch to the administrator.
+
+4
+00:00:15,297 --> 00:00:17,097
+This is the sign-in page.
+
+5
+00:00:17,097 --> 00:00:20,121
+A new customer starts with Create account.
+
+6
+00:00:20,829 --> 00:00:25,181
+Registration asks for a name, an
+email, and a password.
+
+7
+00:00:25,181 --> 00:00:31,749
+If the password is too short, the form says so
+right away, before anything is sent.
+
+8
+00:00:32,458 --> 00:00:37,689
+The password needs at least fifteen
+characters, with no composition rules,
+
+9
+00:00:37,689 --> 00:00:39,315
+and spaces are allowed.
+
+10
+00:00:39,315 --> 00:00:41,506
+So a short sentence works well.
+
+11
+00:00:42,219 --> 00:00:45,906
+The result is always the same
+check your email message,
+
+12
+00:00:45,906 --> 00:00:49,257
+whether or not the address was
+already registered.
+
+13
+00:00:49,257 --> 00:00:51,603
+That keeps account lookups private.
+
+14
+00:00:52,309 --> 00:00:56,661
+If you try to sign in before
+confirming, the app explains why,
+
+15
+00:00:56,661 --> 00:00:59,749
+and offers to resend the
+confirmation email.
+
+16
+00:01:00,462 --> 00:01:03,296
+In this local setup, email is simulated,
+
+17
+00:01:03,296 --> 00:01:07,193
+and the confirmation link is
+written to the server log.
+
+18
+00:01:07,193 --> 00:01:09,461
+Opening it confirms the address,
+
+19
+00:01:09,461 --> 00:01:13,854
+and the app removes the token from the
+address bar right away.
+
+20
+00:01:14,567 --> 00:01:16,679
+Now the customer can sign in.
+
+21
+00:01:20,020 --> 00:01:24,684
+Signed-in customers land on the
+catalog: eight demo products,
+
+22
+00:01:24,684 --> 00:01:27,436
+each with a price and a stock state.
+
+23
+00:01:28,147 --> 00:01:32,637
+Search matches name or SKU, and
+starts after two characters.
+
+24
+00:01:32,637 --> 00:01:34,808
+One letter only shows a hint.
+
+25
+00:01:34,808 --> 00:01:39,822
+Typing key narrows the list, and the
+search is kept in the address,
+
+26
+00:01:39,822 --> 00:01:42,067
+so the page can be bookmarked.
+
+27
+00:01:42,768 --> 00:01:44,841
+Sorting and filters work too.
+
+28
+00:01:44,841 --> 00:01:48,273
+Here the list runs from most to
+least expensive,
+
+29
+00:01:48,273 --> 00:01:52,920
+limited to products under one hundred
+dollars, and in stock only.
+
+30
+00:01:53,631 --> 00:01:56,838
+Opening a product shows its
+details and stock,
+
+31
+00:01:56,838 --> 00:02:00,255
+with a quantity picker and an
+add to cart button.
+
+32
+00:02:00,967 --> 00:02:05,298
+Let's add the keyboard, and then a
+wireless mouse from the list.
+
+33
+00:02:05,298 --> 00:02:08,479
+The cart count in the header
+updates each time.
+
+34
+00:02:09,190 --> 00:02:13,455
+In the cart, quantities can be
+changed and products removed,
+
+35
+00:02:13,455 --> 00:02:15,730
+and the estimated total follows.
+
+36
+00:02:15,730 --> 00:02:20,350
+The cart lives in this browser, and is
+cleared when you sign out.
+
+37
+00:02:21,053 --> 00:02:26,460
+Placing the order checks current prices and
+stock, and sends it just once.
+
+38
+00:02:26,460 --> 00:02:31,209
+The new order opens right away as
+pending, with its items, total,
+
+39
+00:02:31,209 --> 00:02:32,597
+and status history.
+
+40
+00:02:33,309 --> 00:02:39,001
+My orders lists every order, with filters for
+status and dates, and sorting.
+
+41
+00:02:39,001 --> 00:02:41,997
+The filters stay in the address as well.
+
+42
+00:02:42,698 --> 00:02:46,685
+A pending order can be cancelled,
+with an optional reason.
+
+43
+00:02:46,685 --> 00:02:50,810
+The status changes to cancelled, and
+the history records it.
+
+44
+00:02:51,520 --> 00:02:53,804
+My account shows the profile.
+
+45
+00:02:53,804 --> 00:02:55,615
+The email is read only.
+
+46
+00:02:55,615 --> 00:02:59,632
+Edit profile changes the name
+and the phone number.
+
+47
+00:03:00,340 --> 00:03:03,890
+Changing the password signs you
+out on every device,
+
+48
+00:03:03,890 --> 00:03:06,484
+so you sign in again with the new one.
+
+49
+00:03:11,954 --> 00:03:16,514
+Sign out everywhere ends the sessions
+on all devices at once.
+
+50
+00:03:17,226 --> 00:03:22,906
+If you forget the password, enter the email and
+you always see the same message.
+
+51
+00:03:22,906 --> 00:03:28,658
+The reset link, again from the server log,
+opens a page to choose a new password,
+
+52
+00:03:28,658 --> 00:03:30,930
+and then returns you to sign-in.
+
+53
+00:03:31,635 --> 00:03:34,351
+Customers cannot open the back office.
+
+54
+00:03:34,351 --> 00:03:37,995
+The admin address shows a
+not-allowed page instead.
+
+55
+00:03:38,709 --> 00:03:41,300
+Delete account explains what happens.
+
+56
+00:03:41,300 --> 00:03:45,852
+Personal details are erased, order
+records are kept without them,
+
+57
+00:03:45,852 --> 00:03:47,883
+and you cannot sign in again.
+
+58
+00:03:47,883 --> 00:03:51,525
+It asks for the current password
+and a confirmation.
+
+59
+00:03:52,227 --> 00:03:55,971
+Afterwards, the same
+credentials no longer work.
+
+60
+00:03:59,267 --> 00:04:04,258
+Administrators sign in on the same page,
+and land in the back office.
+
+61
+00:04:04,258 --> 00:04:09,683
+The dashboard shows the low-stock count, and
+the last thirty days of sales.
+
+62
+00:04:10,392 --> 00:04:16,128
+The Products section lists every product,
+with search, sorting, and paging.
+
+63
+00:04:16,842 --> 00:04:20,508
+Creating a product validates
+the form first.
+
+64
+00:04:20,508 --> 00:04:25,506
+Then the name, SKU, description,
+price, and stock are saved.
+
+65
+00:04:26,534 --> 00:04:31,361
+Editing loads the latest version and
+saves with a concurrency check,
+
+66
+00:04:31,361 --> 00:04:34,981
+so two admins cannot silently
+overwrite each other.
+
+67
+00:04:34,981 --> 00:04:36,614
+Here I raise the stock.
+
+68
+00:04:37,318 --> 00:04:39,574
+Deleting asks for confirmation.
+
+69
+00:04:39,574 --> 00:04:43,577
+It is a soft delete: customers
+stop seeing the product,
+
+70
+00:04:43,577 --> 00:04:46,270
+and existing orders keep their lines.
+
+71
+00:04:46,985 --> 00:04:51,161
+With Include deleted ticked, the
+product shows as deleted,
+
+72
+00:04:51,161 --> 00:04:53,033
+and one click restores it.
+
+73
+00:04:55,048 --> 00:04:59,867
+That is the customer portal, and the
+first part of the back office.
+
+74
+00:04:59,867 --> 00:05:03,175
+Screens for customers, orders,
+reports, users,
+
+75
+00:05:03,175 --> 00:05:06,340
+and audit logs are not in the
+interface yet.
+
+76
+00:05:06,340 --> 00:05:09,504
+For now those are available
+through the API.
+
+77
+00:05:09,504 --> 00:05:15,186
+To try it yourself, start the stack with
+docker compose up, and open localhost,
+
+78
+00:05:15,186 --> 00:05:17,056
+port eight zero eight one.
