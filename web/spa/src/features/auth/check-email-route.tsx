@@ -2,7 +2,11 @@ import { Link } from 'react-router'
 import { TextLink } from '@/components/text-link'
 import { buttonVariants } from '@/components/ui/button'
 
-// AN-4. The email is neither shown nor stored. The text is the same for new and existing emails.
+/**
+ * AN-4: the page shown after registering. The email is neither shown nor stored. The text is the same for
+ * new and existing emails, so the page never reveals whether an account exists ("anti-enumeration").
+ * In development a hint says where to find the email link (the local setup logs it instead of sending it).
+ */
 export function CheckEmailRoute() {
   return (
     <section className="mx-auto grid max-w-md gap-4 rounded-lg border p-6">

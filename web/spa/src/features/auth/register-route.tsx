@@ -19,6 +19,7 @@ import {
 } from '@/features/auth/access-schemas'
 import { useServerFailure } from '@/hooks/use-server-failure'
 
+/** The form's field names, in on-screen order (used to map server errors and build the error summary). */
 const fieldNames: readonly Path<RegisterValues>[] = [
   'firstName',
   'lastName',
@@ -27,6 +28,7 @@ const fieldNames: readonly Path<RegisterValues>[] = [
   'phone',
 ]
 
+/** Visible name of each field, for the error summary. */
 const fieldLabels: Record<Path<RegisterValues>, string> = {
   firstName: 'First name',
   lastName: 'Last name',
@@ -35,11 +37,13 @@ const fieldLabels: Record<Path<RegisterValues>, string> = {
   phone: 'Phone',
 }
 
+/** One line of the "Fix N problems" summary: which field and what is wrong. */
 interface SummaryItem {
   name: Path<RegisterValues>
   message: string
 }
 
+/** Builds the error summary from React Hook Form's errors, in on-screen order. */
 function summaryOf(errors: FieldErrors<RegisterValues>): SummaryItem[] {
   return fieldNames.flatMap((name) => {
     const message = errors[name]?.message
@@ -47,7 +51,14 @@ function summaryOf(errors: FieldErrors<RegisterValues>): SummaryItem[] {
   })
 }
 
-// AN-3 (EP-01). Success always goes to "Check your email", also for an email that already exists.
+/**
+ * AN-3 (EP-01): the create-account page (`/register`). Success always goes to "Check your email", also for
+ * an email that already exists, so the page never reveals which emails have accounts.
+ * When the user submits with errors, a summary lists them and each item focuses its field.
+ *
+ * Forms here use three libraries together: React Hook Form (`useForm`) tracks the fields, a Zod schema
+ * (through `zodResolver`) validates them, and TanStack Query's `useMutation` sends the request.
+ */
 export function RegisterRoute() {
   const navigate = useNavigate()
   const [summary, setSummary] = useState<SummaryItem[]>([])

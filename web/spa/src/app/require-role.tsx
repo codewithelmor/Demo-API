@@ -1,17 +1,28 @@
+/** A route guard: decides whether the current user may see the pages nested inside it. */
 import type { ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { ForbiddenPage } from '@/app/forbidden-page'
 import { hasRole, sessionEndKey, useSession } from '@/lib/session'
 
+/** Props for {@link RequireRole}. */
 interface RequireRoleProps {
-  // Roles that may see the children. Omit for "any signed-in user".
+  /** Roles that may see the children (the user needs at least one). Omit for "any signed-in user". */
   roles?: readonly string[]
+  /** What to show when allowed. When omitted, the matched child route renders through `<Outlet />`. */
   children?: ReactNode
 }
 
-// UX guard only (the API and BFF enforce access). No session: go to sign-in and come back after.
-// Wrong role: show "not allowed" in place, so the URL stays and the guarded page never renders.
+/**
+ * Shows its children only to a signed-in user who has one of the allowed roles.
+ *
+ * - No session: redirects to `/sign-in`, remembering the current address as `returnUrl` so the user
+ *   comes back after signing in. If the session just ended (for example it timed out), the reason is
+ *   added so the sign-in page can explain it.
+ * - Wrong role: shows the "not allowed" page in place, so the URL stays and the guarded page never renders.
+ *
+ * This is a convenience for the user, not security: the real access checks happen in the BFF and the API.
+ */
 export function RequireRole({ roles, children }: RequireRoleProps) {
   const user = useSession()
   const location = useLocation()

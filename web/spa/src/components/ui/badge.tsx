@@ -1,8 +1,13 @@
 // shadcn/ui component, copied into the project (you own and can change this code).
+// Styling uses Tailwind CSS classes; `cn()` merges them so a caller's `className` can override the defaults.
 import { cva, type VariantProps } from 'class-variance-authority'
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
+/**
+ * Class names for each badge look. `cva` (class-variance-authority) builds the class string from the
+ * chosen `variant`.
+ */
 const badgeVariants = cva(
   'inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap',
   {
@@ -17,6 +22,7 @@ const badgeVariants = cva(
   },
 )
 
+/** A small label for a status or a count. Variants: `default` (filled), `outline` (default), `muted` (grey). */
 function Badge({
   className,
   variant,

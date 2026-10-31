@@ -15,6 +15,7 @@ import { ApiError, fieldErrors, networkError } from '@/lib/problem-details'
 import { messageFor, rateLimitMessage, referenceFor } from '@/lib/problem-messages'
 import { safeReturnUrl } from '@/lib/safe-url'
 
+/** Text for the `?reason=` value in the address, set when the user was sent here (signed out, session ended...). */
 const reasonMessages: Record<string, string> = {
   'session-ended': 'Your session ended. Sign in again to continue.',
   'password-changed': 'Password changed. Sign in with your new password.',
@@ -22,10 +23,22 @@ const reasonMessages: Record<string, string> = {
   'account-erased': 'Your account was erased.',
 }
 
+/** Type guard: true when a server error key names a field of this form. */
 function isFieldName(name: string): name is keyof SignInValues {
   return name === 'email' || name === 'password'
 }
 
+/**
+ * AN-2: the sign-in page (`/sign-in`).
+ *
+ * On success the session starts and the user goes to the page they were heading for (`?returnUrl=`, checked
+ * by `safeReturnUrl`) or to their role's home. On failure the right message shows: a wrong password clears
+ * the password field, an unconfirmed email offers "Resend email", and "too many attempts" (429) disables the
+ * button until the wait is over.
+ *
+ * Forms here use three libraries together: React Hook Form (`useForm`) tracks the fields, a Zod schema
+ * (through `zodResolver`) validates them, and TanStack Query's `useMutation` sends the request.
+ */
 export function SignInRoute() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()

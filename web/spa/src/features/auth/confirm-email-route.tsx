@@ -7,19 +7,25 @@ import { useCountdown } from '@/hooks/use-countdown'
 import { ApiError } from '@/lib/problem-details'
 import { messageFor, referenceFor } from '@/lib/problem-messages'
 
+/** What the confirm-email loader found out; the page shows a different screen for each. */
 export type ConfirmOutcome =
   | { kind: 'confirmed' }
   | { kind: 'invalid' }
   // 429, network and server errors: the link may still be good, so the user can try again.
   | { kind: 'failed'; error: ApiError }
 
+/** Format of a user ID in the link (a GUID). */
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-// Runs once per visit, not once per render, so React StrictMode cannot post twice (AN-5).
-// 1. Read userId and token from the link.
-// 2. Remove them from the address bar and the browser history entry (NFR-F43).
-// 3. Only then call EP-02.
-// "Try again" after a 429 revalidates this loader; the router still holds the original location.
+/**
+ * Route loader for the link in the confirmation email. It runs once per visit, not once per render,
+ * so React StrictMode cannot post twice (AN-5).
+ * 1. Read userId and token from the link.
+ * 2. Remove them from the address bar and the browser history entry (NFR-F43), so the token cannot leak
+ *    through history, screenshots or the Referer header.
+ * 3. Only then call EP-02.
+ * "Try again" after a 429 revalidates this loader; the router still holds the original location.
+ */
 export async function confirmEmailLoader({ request }: LoaderFunctionArgs): Promise<ConfirmOutcome> {
   const params = new URL(request.url).searchParams
   const userId = params.get('userId')
@@ -43,7 +49,7 @@ export async function confirmEmailLoader({ request }: LoaderFunctionArgs): Promi
   }
 }
 
-// AN-5
+/** AN-5: the page the email link opens. It shows the loader's result: confirmed, invalid link, or failed. */
 export function ConfirmEmailRoute() {
   const outcome = useLoaderData<ConfirmOutcome>()
   return (
@@ -56,6 +62,7 @@ export function ConfirmEmailRoute() {
   )
 }
 
+/** Success screen. */
 function Confirmed() {
   return (
     <>
@@ -72,6 +79,7 @@ function Confirmed() {
   )
 }
 
+/** The link is bad or expired: offers to send a new one. */
 function InvalidLink() {
   return (
     <>
@@ -87,6 +95,7 @@ function InvalidLink() {
   )
 }
 
+/** A temporary failure (network, server, 429): the link may still be good, so "Try again" re-runs the loader. */
 function Failed({ error }: { error: ApiError }) {
   const revalidator = useRevalidator()
   const secondsLeft = useCountdown(error, error.status === 429 ? (error.retryAfterSeconds ?? 0) : 0)

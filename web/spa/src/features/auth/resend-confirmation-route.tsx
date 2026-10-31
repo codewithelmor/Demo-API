@@ -1,7 +1,7 @@
 import { TextLink } from '@/components/text-link'
 import { ResendConfirmationForm } from '@/features/auth/resend-confirmation-form'
 
-// AN-6
+/** AN-6: the page for asking for a new confirmation email. The form itself is `ResendConfirmationForm`. */
 export function ResendConfirmationRoute() {
   return (
     <section className="mx-auto grid max-w-md gap-6 rounded-lg border p-6">

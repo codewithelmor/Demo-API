@@ -10,15 +10,24 @@ import { emailSchema, type EmailValues } from '@/features/auth/access-schemas'
 import { resendConfirmation } from '@/features/auth/access-api'
 import { useServerFailure } from '@/hooks/use-server-failure'
 
+/** Neutral result text, the same for every email. */
 export const RESEND_RESULT = 'If an account needs confirming, we sent a new link.'
 
+/** Props for {@link ResendConfirmationForm}. */
 interface ResendConfirmationFormProps {
+  /** Text of the submit button. */
   submitLabel: string
+  /** Email to prefill, when it is already known. */
   defaultEmail?: string
 }
 
-// EP-03. The result is the same for every email (anti-enumeration), so the page never says whether
+/**
+ * EP-03. The result is the same for every email (anti-enumeration), so the page never says whether
 // the account exists. Used on /resend-confirmation and inline on /confirm-email.
+ *
+ * Form handling: `useForm` (React Hook Form) tracks the fields, `zodResolver` validates them with the Zod
+ * schema, and `useMutation` sends the request.
+ */
 export function ResendConfirmationForm({
   submitLabel,
   defaultEmail = '',

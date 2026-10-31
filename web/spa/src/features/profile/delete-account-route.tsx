@@ -20,7 +20,10 @@ import { deleteAccountSchema, type DeleteAccountValues } from '@/features/profil
 import { useEndSession } from '@/hooks/use-end-session'
 import { useServerFailure } from '@/hooks/use-server-failure'
 
-// CU-10 (EP-37). Two confirmations: the "I understand" box with the password, then the dialog.
+/**
+ * CU-10 (EP-37). Two confirmations: the "I understand" box with the password, then the dialog.
+ * Erasing is permanent, so it needs the password, a checked box, and a final dialog.
+ */
 export function DeleteAccountRoute() {
   const endSession = useEndSession()
   const [confirming, setConfirming] = useState(false)

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PRICE_PATTERN, type CatalogParams } from '@/features/catalog/catalog-params'
 
+/** A price typed in the box: empty (no limit) or a valid price like `12` or `12.50`. */
 const priceText = z
   .string()
   .trim()
@@ -15,7 +16,7 @@ const priceText = z
     error: 'Enter a price like 12 or 12.50.',
   })
 
-// Min above max is caught here, so no request is made (US-F026 AC3).
+/** The whole filter form. Min above max is caught here, so no request is made (US-F026 AC3). */
 const filtersSchema = z
   .object({ minPrice: priceText, maxPrice: priceText, inStock: z.boolean() })
   .refine(
@@ -26,17 +27,25 @@ const filtersSchema = z
     { path: ['minPrice'], error: 'Min price must be less than or equal to max price.' },
   )
 
+/** What the filter form holds while the user types (prices are text until applied). */
 type FiltersValues = z.infer<typeof filtersSchema>
 
+/** Props for {@link CatalogFilters}. */
 interface CatalogFiltersProps {
+  /** The filters currently in the URL, used as the starting values. */
   params: CatalogParams
+  /** Called with the new filters when the user presses "Apply filters" and the input is valid. */
   onApply: (filters: Pick<CatalogParams, 'minPrice' | 'maxPrice' | 'inStock'>) => void
+  /** Called when the user presses "Clear filters". */
   onClear: () => void
+  /** Whether to show the "Clear filters" button (only when a filter is active). */
   canClear: boolean
 }
 
-// Price range and "in stock only" (wireframe CU-1). Applied with a button, so a half-typed range
+/**
+ * Price range and "in stock only" (wireframe CU-1). Applied with a button, so a half-typed range
 // never reaches the API. The parent remounts this form (key) when the URL changes the values.
+ */
 export function CatalogFilters({ params, onApply, onClear, canClear }: CatalogFiltersProps) {
   const checkboxId = useId()
   const {

@@ -4,10 +4,14 @@ import { productKeys } from '@/api/products'
 import type { components } from '@/api/schema'
 import { PAGE_SIZE, type CatalogParams } from '@/features/catalog/catalog-params'
 
+/** One page of the product list (items plus paging info). */
 export type ProductPage = components['schemas']['PagedResponseOfProductResponse']
 
-// GET /api/v1/products (EP-22) through the typed client; the BFF adds the bearer token.
-// Search, price range, in-stock, sort and paging all go to the API; nothing is filtered in the browser.
+/**
+ * Query definition for the product list: GET /api/v1/products (EP-22) through the typed client; the BFF
+ * adds the bearer token. Search, price range, in-stock, sort and paging all go to the API; nothing is
+ * filtered in the browser. The `params` are part of the cache key, so each combination is cached on its own.
+ */
 export function productsQuery(params: CatalogParams) {
   return queryOptions({
     queryKey: productKeys.list(params),

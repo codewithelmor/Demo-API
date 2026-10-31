@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react'
 
-// Counts down from `seconds` to 0, once per second, whenever `source` changes to a new object
-// (for example a new 429 error). Pass `undefined` as source for "not counting".
-// Used to keep a submit button disabled after a 429 (NFR-F23).
+/**
+ * React hook that counts down from `seconds` to 0, once per second, whenever `source` changes to a new
+ * object (for example a new 429 "too many requests" error). Pass `undefined` as source for "not counting".
+ * Used to keep a submit button disabled after a 429 (NFR-F23).
+ *
+ * @param source  Any object that identifies the event to count down for.
+ * @param seconds Where to start counting.
+ * @returns The seconds left (0 when finished or not counting).
+ */
 export function useCountdown(source: object | undefined, seconds: number): number {
   const [state, setState] = useState<{ source: object | undefined; left: number }>({
     source,

@@ -11,6 +11,7 @@ import { MAX_QUANTITY } from '@/lib/cart-storage'
 import { ApiError } from '@/lib/problem-details'
 import { formatMoney } from '@/lib/money'
 
+/** A route loader: React Router runs it before the page shows, so the data is already loading when the page appears. Starts loading one product; errors are left for the page to show. */
 export function productDetailLoader(queryClient: QueryClient) {
   return ({ params }: LoaderFunctionArgs) => {
     if (params.productId) queryClient.query(productQuery(params.productId)).catch(() => undefined)
@@ -18,7 +19,7 @@ export function productDetailLoader(queryClient: QueryClient) {
   }
 }
 
-// The list the visitor came from ("?search=...&page=2"), so "Back to products" keeps it.
+/** The list the visitor came from ("?search=...&page=2"), so "Back to products" keeps it. */
 function backLink(state: unknown): string {
   if (typeof state === 'object' && state !== null && 'list' in state) {
     const list = state.list
@@ -27,7 +28,10 @@ function backLink(state: unknown): string {
   return '/products'
 }
 
-// CU-2
+/**
+ * CU-2
+ * The product detail page: price, stock, description and an "Add to cart" control for customers.
+ */
 export function ProductDetailRoute() {
   const { productId = '' } = useParams()
   const location = useLocation()
@@ -97,6 +101,7 @@ export function ProductDetailRoute() {
   )
 }
 
+/** The loaded product, drawn. Split from the route so it only renders once data exists. */
 function Detail({ product }: { product: Product }) {
   const cart = useCart()
   const inStock = product.stockQuantity > 0

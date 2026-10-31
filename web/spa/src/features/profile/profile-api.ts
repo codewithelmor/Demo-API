@@ -3,27 +3,34 @@ import { bffVoid } from '@/api/bff'
 import { api, expectOk, unwrapWithResponse } from '@/api/client'
 import type { components } from '@/api/schema'
 
+/** The customer profile as the API returns it. */
 export type Profile = components['schemas']['MyProfileResponse']
 
-// The profile and the ETag that came with it. The ETag is opaque: it is only sent back as If-Match (NFR-F22).
+/**
+ * The profile and the ETag that came with it. The ETag is opaque: it is only sent back as If-Match (NFR-F22).
+ * (An ETag is a version tag from the server; sending it back proves the edit is based on the latest version.)
+ */
 export interface ProfileData {
   profile: Profile
   etag: string | undefined
 }
 
+/** Cache key of the profile query. */
 export const profileKey = ['profile'] as const
 
+/** Pairs the profile with the ETag header of the same response. */
 function withEtag(result: { data: Profile; response: Response }): ProfileData {
   return { profile: result.data, etag: result.response.headers.get('ETag') ?? undefined }
 }
 
-// GET /api/v1/customers/me (EP-35)
+/** GET /api/v1/customers/me (EP-35) */
 export const profileQuery = queryOptions({
   queryKey: profileKey,
   queryFn: async ({ signal }): Promise<ProfileData> =>
     withEtag(await unwrapWithResponse<Profile>(api.GET('/api/v1/customers/me', { signal }))),
 })
 
+/** What the edit form sends. */
 export interface ProfileInput {
   firstName: string
   lastName: string
@@ -31,7 +38,7 @@ export interface ProfileInput {
   phone: string
 }
 
-// PUT /api/v1/customers/me (EP-36). Needs If-Match: 428 when missing, 412 when stale.
+/** PUT /api/v1/customers/me (EP-36). Needs If-Match: 428 when missing, 412 when stale. */
 export async function updateProfile(etag: string | undefined, input: ProfileInput) {
   return withEtag(
     await unwrapWithResponse<Profile>(
@@ -47,7 +54,7 @@ export async function updateProfile(etag: string | undefined, input: ProfileInpu
   )
 }
 
-// POST /api/v1/auth/change-password (EP-09). 204; the BFF ends the session on success.
+/** POST /api/v1/auth/change-password (EP-09). 204; the BFF ends the session on success. */
 export function changePassword(body: {
   currentPassword: string
   newPassword: string
@@ -55,12 +62,12 @@ export function changePassword(body: {
   return expectOk(api.POST('/api/v1/auth/change-password', { body }))
 }
 
-// POST /api/v1/customers/me/erase (EP-37). 204; the BFF ends the session on success.
+/** POST /api/v1/customers/me/erase (EP-37). 204; the BFF ends the session on success. */
 export function eraseAccount(currentPassword: string): Promise<void> {
   return expectOk(api.POST('/api/v1/customers/me/erase', { body: { currentPassword } }))
 }
 
-// POST /bff/logout-all (EP-07 through the BFF, which also deletes this session).
+/** POST /bff/logout-all (EP-07 through the BFF, which also deletes this session). */
 export function signOutEverywhere(): Promise<void> {
   return bffVoid('/bff/logout-all', { method: 'POST' })
 }

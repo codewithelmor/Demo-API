@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+// Zod is the library that describes what valid data looks like and checks it (forms, server answers).
 // The ONLY place that imports 'zod' for runtime use; every other file imports `z` from '@/lib/zod'.
 // Zod probes `new Function('')` when an object schema is created, and our CSP (script-src 'self', no
 // unsafe-eval) reports that caught probe as a securitypolicyviolation. A module-level schema is created while

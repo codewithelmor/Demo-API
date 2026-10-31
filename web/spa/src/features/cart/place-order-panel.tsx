@@ -10,10 +10,13 @@ import type { CartLine } from '@/lib/cart-storage'
 import { ApiError, networkError } from '@/lib/problem-details'
 import { messageFor, referenceFor } from '@/lib/problem-messages'
 
-// Why a line is marked after a failed order: 'stock' = insufficient-stock names it, 'removed' = the
-// API no longer knows the product (400 items[i].productId).
+/**
+ * Why a line is marked after a failed order: 'stock' = insufficient-stock names it, 'removed' = the
+ * API no longer knows the product (400 items[i].productId).
+ */
 export type LineConflict = 'stock' | 'removed'
 
+/** Props for {@link PlaceOrderPanel}. */
 interface PlaceOrderPanelProps {
   lines: readonly CartLine[]
   // Set while the order cannot be placed (unavailable lines); shown next to the button.
@@ -21,8 +24,10 @@ interface PlaceOrderPanelProps {
   onConflicts: (conflicts: ReadonlyMap<string, LineConflict>) => void
 }
 
+/** Matches a server error key like `items[2].productId`; the number says which cart line is meant. */
 const ITEM_PRODUCT_KEY = /^items\[(\d+)\]\.productid$/i
 
+/** Finds the product IDs the API says no longer exist, from the validation errors of a failed order. */
 function removedProducts(error: ApiError, items: OrderItemInput[]): string[] {
   const ids: string[] = []
   for (const key of Object.keys(error.problem.errors ?? {})) {
@@ -33,8 +38,11 @@ function removedProducts(error: ApiError, items: OrderItemInput[]): string[] {
   return ids
 }
 
-// US-F029. One POST per click: the button is disabled while it runs, and a failed POST is never
-// retried automatically (there is no Idempotency-Key, so a retry could create a second order, NFR-F24).
+/**
+ * US-F029. One POST per click: the button is disabled while it runs, and a failed POST is never
+ * retried automatically (there is no Idempotency-Key, so a retry could create a second order, NFR-F24).
+ * The panel holds the "Place order" button. On success it clears the cart and opens the new order.
+ */
 export function PlaceOrderPanel({ lines, blockedReason, onConflicts }: PlaceOrderPanelProps) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -105,6 +113,7 @@ export function PlaceOrderPanel({ lines, blockedReason, onConflicts }: PlaceOrde
   )
 }
 
+/** Explains why placing the order failed (stock, too many open orders, rate limit...). */
 function FailureAlert({ error }: { error: ApiError }) {
   const reference = referenceFor(error)
 

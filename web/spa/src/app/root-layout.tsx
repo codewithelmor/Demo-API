@@ -1,3 +1,4 @@
+/** The frame around every page: skip link, header with navigation, and the main content area. */
 import { NavLink, Outlet, useNavigation } from 'react-router'
 import { CartLink } from '@/components/cart-link'
 import { useSession } from '@/lib/session'
@@ -5,13 +6,21 @@ import { SignOutButton } from '@/features/auth/sign-out-button'
 import { useFocusHeadingOnNavigate } from '@/hooks/use-focus-heading-on-navigate'
 import { cn } from '@/lib/utils'
 
+/** CSS classes for a navigation link. React Router tells us whether the link points at the current page. */
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'rounded-md px-3 py-2 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring',
     isActive && 'bg-muted',
   )
 
-// App shell: skip link, header (navigation and account only when signed in), and <main>.
+/**
+ * The app shell, rendered around every page (the page itself appears where `<Outlet />` is).
+ *
+ * - The skip link lets keyboard and screen-reader users jump over the header straight to `<main>`.
+ * - The navigation, cart link and sign-out button only show when someone is signed in, and the links
+ *   depend on the user's role (Customer or Admin).
+ * - `aria-busy` tells assistive technology that the page content is loading during a navigation.
+ */
 export function RootLayout() {
   useFocusHeadingOnNavigate()
   const navigation = useNavigation()

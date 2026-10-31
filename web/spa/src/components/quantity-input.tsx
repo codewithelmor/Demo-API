@@ -4,21 +4,29 @@ import { FormField } from '@/components/form-field'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
+/** Props for {@link QuantityInput}. */
 interface QuantityInputProps {
+  /** Visible label, also used for the button names ("Decrease <label>"). */
   label: string
+  /** The current quantity, owned by the parent (this is a "controlled" component). */
   value: number
-  // Highest allowed quantity (1000, or less when stock is lower).
+  /** Highest allowed quantity (1000, or less when stock is lower). */
   max: number
-  // Called only with a valid quantity from 1 to max.
+  /** Called only with a valid quantity from 1 to max. */
   onChange: (quantity: number) => void
+  /** Disables the buttons and the field. */
   disabled?: boolean
 }
 
-// A whole number from 1 to max, with minus and plus buttons. An invalid entry shows an error
-// as soon as it is typed and is never passed on (US-F028 AC3). A typed number is saved when the
-// field loses focus or on Enter, so half-typed numbers like "10" on the way to "1001" are not saved.
+/**
+ * A whole number from 1 to max, with minus and plus buttons. An invalid entry shows an error
+ * as soon as it is typed and is never passed on (US-F028 AC3). A typed number is saved when the
+ * field loses focus or on Enter, so half-typed numbers like "10" on the way to "1001" are not saved.
+ */
 export function QuantityInput({ label, value, max, onChange, disabled }: QuantityInputProps) {
+  // What is typed in the field (text, because the user may type something invalid).
   const [text, setText] = useState(String(value))
+  // The last `value` we showed, to notice when the parent changes it.
   const [shownValue, setShownValue] = useState(value)
 
   // The quantity changed from outside (for example "Set to 1"): show it.
@@ -27,11 +35,13 @@ export function QuantityInput({ label, value, max, onChange, disabled }: Quantit
     setText(String(value))
   }
 
+  /** Turns typed text into a valid quantity, or `undefined` when it is not a whole number from 1 to max. */
   function parse(entry: string): number | undefined {
     const quantity = /^\d+$/.test(entry.trim()) ? Number(entry) : Number.NaN
     return Number.isInteger(quantity) && quantity >= 1 && quantity <= max ? quantity : undefined
   }
 
+  /** Accepts a valid quantity: updates the field and tells the parent when it really changed. */
   function save(quantity: number) {
     setText(String(quantity))
     if (quantity !== value) {
@@ -43,6 +53,7 @@ export function QuantityInput({ label, value, max, onChange, disabled }: Quantit
   const error = parse(text) === undefined ? `Enter a quantity from 1 to ${String(max)}.` : undefined
   const current = parse(text) ?? value
 
+  /** Saves the typed text if it is valid (called on blur and Enter). */
   function commitTyped() {
     const quantity = parse(text)
     if (quantity !== undefined) save(quantity)

@@ -8,11 +8,12 @@ import { Input } from '@/components/ui/input'
 import type { OrdersParams } from '@/features/orders/orders-params'
 import { isValidDay } from '@/lib/dates'
 
+/** A day typed in a date box: empty or `YYYY-MM-DD`. */
 const dayText = z
   .string()
   .refine((value) => value === '' || isValidDay(value), { error: 'Enter a valid date.' })
 
-// To before From is caught here, so no request is made (US-F030 AC2). Days are yyyy-mm-dd, so they compare as text.
+/** To before From is caught here, so no request is made (US-F030 AC2). Days are yyyy-mm-dd, so they compare as text. */
 const filtersSchema = z
   .object({ statuses: z.array(z.enum(ORDER_STATUSES)), from: dayText, to: dayText })
   .refine((values) => values.from === '' || values.to === '' || values.to >= values.from, {
@@ -20,8 +21,10 @@ const filtersSchema = z
     error: 'The To date must be on or after the From date.',
   })
 
+/** What the filter form holds while the user edits it. */
 type FiltersValues = z.infer<typeof filtersSchema>
 
+/** Props for {@link OrdersFilters}. */
 interface OrdersFiltersProps {
   params: OrdersParams
   onApply: (filters: Pick<OrdersParams, 'statuses' | 'from' | 'to'>) => void
@@ -29,8 +32,10 @@ interface OrdersFiltersProps {
   canClear: boolean
 }
 
-// Status checkboxes and From / To dates (wireframe CU-4). Applied with a button. The parent remounts
-// this form (key) when the URL changes the values.
+/**
+ * Status checkboxes and From / To dates (wireframe CU-4). Applied with a button. The parent remounts
+ * this form (key) when the URL changes the values.
+ */
 export function OrdersFilters({ params, onApply, onClear, canClear }: OrdersFiltersProps) {
   const {
     register,

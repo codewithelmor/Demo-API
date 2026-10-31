@@ -3,18 +3,23 @@ import { FormField } from '@/components/form-field'
 import { Input } from '@/components/ui/input'
 import { SEARCH_MAX, SEARCH_MIN } from '@/features/catalog/catalog-params'
 
+/** "Debounce": wait this long after the last keystroke before searching, so we do not send a request per letter. */
 const DEBOUNCE_MS = 300
 
+/** Props for {@link CatalogSearch}. */
 interface CatalogSearchProps {
-  // The search in the URL.
+  /** The search in the URL. */
   value: string
-  // undefined = no search. Never called with fewer than 2 characters.
+  /** Called with the new search text; `undefined` = no search. Never called with fewer than 2 characters. */
   onSearch: (search: string | undefined) => void
 }
 
-// Search by name or SKU. The URL (and so the request) updates 300 ms after the last keystroke.
-// One character only shows a hint: nothing is sent (US-F026 AC2).
+/**
+ * Search by name or SKU. The URL (and so the request) updates 300 ms after the last keystroke.
+ * One character only shows a hint: nothing is sent (US-F026 AC2).
+ */
 export function CatalogSearch({ value, onSearch }: CatalogSearchProps) {
+  // What is typed in the box right now.
   const [text, setText] = useState(value)
   // The last value this box put into the URL, and the URL value it last saw.
   const [committed, setCommitted] = useState(value)
@@ -38,6 +43,7 @@ export function CatalogSearch({ value, onSearch }: CatalogSearchProps) {
     [],
   )
 
+  /** Handles typing: restarts the wait, and after it sends the search (unless it is a single character). */
   function change(next: string) {
     setText(next)
     clearTimeout(timer.current)

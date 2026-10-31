@@ -22,8 +22,11 @@ import { CatalogSearch } from '@/features/catalog/catalog-search'
 import { ProductCard } from '@/features/catalog/product-card'
 import { addMessage, useCart } from '@/hooks/use-cart'
 
-// Starts the request before the page renders. Errors are swallowed here, so the page itself
-// shows loading and error states with a retry (CU-1 states).
+/**
+ * Starts the request before the page renders. Errors are swallowed here, so the page itself
+ * shows loading and error states with a retry (CU-1 states).
+ * (A route loader: React Router runs it before the page shows, so the data is already loading when the page appears.)
+ */
 export function catalogLoader(queryClient: QueryClient) {
   return ({ request }: LoaderFunctionArgs) => {
     const params = parseParams(new URL(request.url).searchParams)
@@ -33,10 +36,12 @@ export function catalogLoader(queryClient: QueryClient) {
   }
 }
 
+/** Type guard: true when the text is one of the allowed sort orders. */
 function isSort(value: string): value is CatalogSort {
   return SORTS.some((sort) => sort === value)
 }
 
+/** A short status message (for example "Added X to cart") shown in a live region so screen readers announce it. */
 interface Notice {
   // Counts up with every notice, so the same text twice is a new element and is announced again.
   id: number
@@ -44,7 +49,11 @@ interface Notice {
   text: string
 }
 
-// CU-1. Search, filters, sort and page are in the URL and are sent to the API.
+/**
+ * CU-1. Search, filters, sort and page are in the URL and are sent to the API.
+ * Page flow: read the URL -> ask the API (cached) -> show a grid of product cards, or a loading,
+ * error or empty state, plus the filters, sort dropdown and paging buttons.
+ */
 export function CatalogRoute() {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()

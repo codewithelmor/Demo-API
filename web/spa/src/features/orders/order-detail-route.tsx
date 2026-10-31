@@ -11,6 +11,7 @@ import { apiErrorMessage } from '@/lib/error-message'
 import { formatMoneyIn } from '@/lib/money'
 import { ApiError } from '@/lib/problem-details'
 
+/** A route loader: React Router runs it before the page shows, so the data is already loading when the page appears. Starts loading one order. */
 export function orderDetailLoader(queryClient: QueryClient) {
   return ({ params }: LoaderFunctionArgs) => {
     if (params.orderId) queryClient.query(myOrderQuery(params.orderId)).catch(() => undefined)
@@ -18,12 +19,15 @@ export function orderDetailLoader(queryClient: QueryClient) {
   }
 }
 
-// True when the page was opened right after placing the order (the cart passes it in the history state).
+/** True when the page was opened right after placing the order (the cart passes it in the history state). */
 function cameFromCheckout(state: unknown): boolean {
   return typeof state === 'object' && state !== null && 'placed' in state && state.placed === true
 }
 
-// CU-5
+/**
+ * CU-5
+ * The order detail page: status, lines with product names, totals and (for Pending orders) a cancel button.
+ */
 export function OrderDetailRoute() {
   const { orderId = '' } = useParams()
   const location = useLocation()
@@ -83,11 +87,12 @@ export function OrderDetailRoute() {
   return <OrderDetail order={data} placed={cameFromCheckout(location.state)} />
 }
 
+/** Plain-language sentence for an order status. */
 function statusText(status: OrderStatus): string {
   return status === 'Cancelled' ? 'Order cancelled.' : `Order status is now ${status}.`
 }
 
-// What the page shows for a line's product name (EP-23, one call per distinct product, kept for the session).
+/** What the page shows for a line's product name (EP-23, one call per distinct product, kept for the session). */
 function productCell(query: UseQueryResult<Product> | undefined, productId: string) {
   if (!query || query.isPending) {
     return (
@@ -110,6 +115,7 @@ function productCell(query: UseQueryResult<Product> | undefined, productId: stri
   )
 }
 
+/** The loaded order, drawn. `placed` is true right after checkout, to show a "thank you" message. */
 function OrderDetail({ order, placed }: { order: MyOrder; placed: boolean }) {
   // Status changes are announced: after a cancel, or when the order moved on while the page was open.
   const [seenStatus, setSeenStatus] = useState(order.status)

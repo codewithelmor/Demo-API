@@ -2,6 +2,7 @@
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
+/** A dropdown using the browser's built-in `<select>`, which works well with keyboards, phones and screen readers. */
 function NativeSelect({ className, ...props }: ComponentProps<'select'>) {
   return (
     <select

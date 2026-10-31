@@ -6,10 +6,17 @@ import { useCountdown } from '@/hooks/use-countdown'
 import { ApiError, networkError } from '@/lib/problem-details'
 import { messageFor } from '@/lib/problem-messages'
 
+/** Neutral text after resending: the same for every email, so it never reveals if an account exists. */
 export const RESEND_SENT = 'If an account exists for this email, we sent a new link.'
 
-// Sign-in got 403 email-not-confirmed (AN-2). [Resend email] reuses the email already typed (WCAG 3.3.7),
-// and the alert then changes to the same neutral text for every email.
+/**
+ * Shown on the sign-in page when sign-in got 403 email-not-confirmed (AN-2). [Resend email] reuses the
+ * email already typed (WCAG 3.3.7: do not make users enter the same data twice), and the alert then
+ * changes to the same neutral text for every email.
+ *
+ * @param email   The email the user typed on the sign-in form.
+ * @param message The server-based message explaining that the email is not confirmed.
+ */
 export function UnconfirmedAlert({ email, message }: { email: string; message: string }) {
   const [sent, setSent] = useState(false)
   const [failure, setFailure] = useState<ApiError | undefined>()

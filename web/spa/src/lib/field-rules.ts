@@ -1,17 +1,28 @@
 import { z } from '@/lib/zod'
 
-// Field rules shared by the sign-up form and the profile and password forms. They mirror the API rules in
-// endpoint-catalog section 1.5 (NFR-F21); the server stays the authority.
+/**
+ * Form field rules shared by the sign-up form and the profile and password forms. Each rule is a Zod
+ * schema: a small description of what valid input looks like, used to show errors before anything is sent.
+ * They mirror the API rules in endpoint-catalog section 1.5 (NFR-F21); the server stays the authority.
+ */
 
+/** Fewest characters a password may have. */
 export const PASSWORD_MIN = 15
+/** Most characters a password may have. */
 export const PASSWORD_MAX = 128
 
-// Passwords are counted in Unicode code points, like the API (FR-003): iterating a string
-// yields code points, so an emoji counts as 1 (value.length would count 2).
+/**
+ * Length of a text in Unicode code points, like the API counts passwords (FR-003).
+ * Iterating a string yields code points, so an emoji counts as 1 (`value.length` would count 2).
+ */
 export function codePointLength(value: string): number {
   return Array.from(value).length
 }
 
+/**
+ * Rule for a required name field, 1 to 100 characters after trimming spaces.
+ * @param label Lower-case field name used in the error text, for example `"first name"`.
+ */
 export const name = (label: string) =>
   z
     .string()
@@ -22,7 +33,7 @@ export const name = (label: string) =>
       `${label.charAt(0).toUpperCase()}${label.slice(1)} is too long. Use 100 characters or fewer.`,
     )
 
-// No composition rules, all Unicode allowed, only a length range.
+/** Rule for a password: no composition rules (no "needs a digit"), all Unicode allowed, only a length range. */
 export const password = z
   .string()
   .refine((value) => codePointLength(value) >= PASSWORD_MIN, {
@@ -32,9 +43,10 @@ export const password = z
     error: `Use ${String(PASSWORD_MAX)} characters or fewer.`,
   })
 
+/** Phone number format E.164: `+`, a country code that does not start with 0, up to 15 digits in total. */
 export const E164 = /^\+[1-9][0-9]{1,14}$/
 
-// Optional: an empty field is allowed and is not sent.
+/** Rule for an optional phone number: an empty field is allowed and is not sent. */
 export const phone = z
   .string()
   .trim()

@@ -19,6 +19,7 @@ import { shortId, StatusBadge } from '@/features/orders/status-badge'
 import { formatDateTime } from '@/lib/dates'
 import { formatMoneyIn } from '@/lib/money'
 
+/** A route loader: React Router runs it before the page shows, so the data is already loading when the page appears. Starts loading the order list for the URL's filters. */
 export function ordersLoader(queryClient: QueryClient) {
   return ({ request }: LoaderFunctionArgs) => {
     const params = parseOrdersParams(new URL(request.url).searchParams)
@@ -28,11 +29,15 @@ export function ordersLoader(queryClient: QueryClient) {
   }
 }
 
+/** Type guard: true when the text is one of the allowed sort orders. */
 function isSort(value: string): value is OrderSort {
   return ORDER_SORTS.some((sort) => sort === value)
 }
 
-// CU-4. Status, dates, sort and page are in the URL and are sent to the API.
+/**
+ * CU-4. Status, dates, sort and page are in the URL and are sent to the API.
+ * A table/list of the customer's orders with filters, sort and paging.
+ */
 export function OrdersRoute() {
   const [searchParams, setSearchParams] = useSearchParams()
   const params = parseOrdersParams(searchParams)

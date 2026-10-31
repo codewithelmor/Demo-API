@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { cn } from '@/lib/utils'
 
+/** The account pages the side navigation links to. */
 const links = [
   { to: '/account', label: 'Profile', paths: ['/account', '/account/edit'] },
   { to: '/account/password', label: 'Change password', paths: ['/account/password'] },
   { to: '/account/delete', label: 'Delete account', paths: ['/account/delete'] },
 ]
 
-// The list of account pages (information architecture, My account). "Profile" stays current on the edit page too.
+/** The list of account pages (information architecture, My account). "Profile" stays current on the edit page too. */
 export function AccountNav() {
   const { pathname } = useLocation()
   return (
@@ -36,7 +37,7 @@ export function AccountNav() {
   )
 }
 
-// The page frame: the account links next to the page.
+/** The page frame: the account links next to the page. */
 export function AccountLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid gap-6 md:grid-cols-[12rem_1fr]">

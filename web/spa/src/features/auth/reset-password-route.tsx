@@ -19,14 +19,19 @@ import {
 } from '@/features/auth/access-schemas'
 import { useServerFailure } from '@/hooks/use-server-failure'
 
+/** What the reset link carries. */
 interface ResetLink {
   email: string
   token: string
 }
 
-// Reads email and token from the link once, then removes them from the address bar and the history
-// entry (AN-8, US-F025 AC3). The values live only in the loader data (memory) after that.
-// A refresh then finds no token, and the page tells the user to open the link again.
+/**
+ * Route loader: reads email and token from the link once, then removes them from the address bar and the
+ * history entry (AN-8, US-F025 AC3). The values live only in the loader data (memory) after that.
+ * A refresh then finds no token, and the page tells the user to open the link again.
+ *
+ * @returns The email and token, or `null` when the link has no (or half) data.
+ */
 export function resetPasswordLoader({ request }: { request: Request }): ResetLink | null {
   const params = new URL(request.url).searchParams
   const email = params.get('email')
@@ -37,7 +42,7 @@ export function resetPasswordLoader({ request }: { request: Request }): ResetLin
   return email && token ? { email, token } : null
 }
 
-// AN-8 (EP-11)
+/** AN-8 (EP-11): the "set a new password" page that the reset email links to. */
 export function ResetPasswordRoute() {
   const link = useLoaderData<ResetLink | null>()
   return (
@@ -51,6 +56,7 @@ export function ResetPasswordRoute() {
   )
 }
 
+/** Button to the forgot-password page, shown when the link cannot be used. */
 function RequestNewLink() {
   return (
     <div>
@@ -61,6 +67,7 @@ function RequestNewLink() {
   )
 }
 
+/** Shown when the page is opened without a link (or after a refresh, which removed it). */
 function MissingLink() {
   return (
     <>
@@ -70,6 +77,7 @@ function MissingLink() {
   )
 }
 
+/** The form with the new-password field. The email is shown read-only so password managers can pair it. */
 function ResetForm({ link }: { link: ResetLink }) {
   const navigate = useNavigate()
   const {

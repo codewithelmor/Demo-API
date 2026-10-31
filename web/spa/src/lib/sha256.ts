@@ -1,7 +1,9 @@
+// SHA-256 turns any text into a fixed 64-character fingerprint that cannot be reversed.
 // A small synchronous SHA-256 (FIPS 180-4) for the cart storage key (NFR-F41). It only names a
 // storage slot, so it is not used for secrets. The synchronous form avoids async key setup and works
 // on plain-http origins, where crypto.subtle is missing. Checked against the standard test vectors.
 
+/** The 64 round constants of the SHA-256 standard. Do not change them. */
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
   0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
@@ -13,8 +15,14 @@ const K = new Uint32Array([
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 ])
 
+/** Rotate the 32 bits of `x` right by `n` places (bits that fall off the right end come back on the left). */
 const rotr = (x: number, n: number) => (x >>> n) | (x << (32 - n))
 
+/**
+ * SHA-256 of a text, as 64 lower-case hex characters. Works in three steps: pad the UTF-8 bytes to a
+ * multiple of 64, then mix each 64-byte block into eight running 32-bit values, then print those values.
+ * Not for secrets: it only names a storage slot.
+ */
 export function sha256Hex(text: string): string {
   const data = new TextEncoder().encode(text)
   const paddedLength = Math.ceil((data.length + 9) / 64) * 64

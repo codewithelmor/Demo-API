@@ -17,15 +17,21 @@ import { useCountdown } from '@/hooks/use-countdown'
 import { ApiError, networkError } from '@/lib/problem-details'
 import { messageFor, referenceFor } from '@/lib/problem-messages'
 
+/** Longest cancellation reason the API accepts. */
 const REASON_MAX = 500
 
+/** Props for {@link CancelOrderDialog}. */
 interface CancelOrderDialogProps {
   orderId: string
   // Called when the API says the order cannot be cancelled any more (409), with the text to show.
   onConflict: (message: string) => void
 }
 
-// CU-6. Cancel your own Pending order, with an optional reason of up to 500 characters (EP-48).
+/**
+ * CU-6. Cancel your own Pending order, with an optional reason of up to 500 characters (EP-48).
+ * A confirmation dialog: the user may type a reason, then confirms. After success the order is re-read
+ * and the stock of its products is refreshed.
+ */
 export function CancelOrderDialog({ orderId, onConflict }: CancelOrderDialogProps) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)

@@ -3,6 +3,10 @@ import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/session'
 import { useEndSession } from '@/hooks/use-end-session'
 
+/**
+ * The "Sign out" button in the header. It calls the BFF, then clears the local session and the cart and
+ * goes to the sign-in page. `useMutation` runs a change (a write) and tells us when it is pending.
+ */
 export function SignOutButton() {
   const endSession = useEndSession()
   const mutation = useMutation({

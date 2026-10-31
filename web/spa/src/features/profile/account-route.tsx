@@ -8,6 +8,7 @@ import { formatDateTime } from '@/lib/dates'
 import { apiErrorMessage } from '@/lib/error-message'
 import { ApiError } from '@/lib/problem-details'
 
+/** A route loader: React Router runs it before the page shows, so the data is already loading when the page appears. Starts loading the profile. */
 export function accountLoader(queryClient: QueryClient) {
   return () => {
     // Not awaited: the page renders its loading state while the request runs.
@@ -16,11 +17,15 @@ export function accountLoader(queryClient: QueryClient) {
   }
 }
 
+/** True when the page was opened right after saving the profile (passed in the history state). */
 function savedFlag(state: unknown): boolean {
   return typeof state === 'object' && state !== null && 'saved' in state && state.saved === true
 }
 
-// CU-7 (EP-35)
+/**
+ * CU-7 (EP-35)
+ * The "My account" page: shows the profile and links to edit, change password and delete.
+ */
 export function AccountRoute() {
   const location = useLocation()
   const { data, error, isPending, isError, refetch, isFetching } = useQuery(profileQuery)
@@ -96,8 +101,10 @@ export function AccountRoute() {
   )
 }
 
-// CU-7, US-F036 (EP-07). The BFF deletes this session and the API revokes the other sessions' tokens,
-// so they end on their next refresh. The cart on this device is cleared, as for any sign out.
+/**
+ * CU-7, US-F036 (EP-07). The BFF deletes this session and the API revokes the other sessions' tokens,
+ * so they end on their next refresh. The cart on this device is cleared, as for any sign out.
+ */
 function SignOutEverywhere() {
   const endSession = useEndSession()
   const mutation = useMutation({

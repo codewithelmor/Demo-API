@@ -1,7 +1,14 @@
+/** The "you do not have access" page (HTTP 403 equivalent). */
 import { Link } from 'react-router'
 import { buttonVariants } from '@/components/ui/button'
 
-// SY-2: shown in place on guarded routes. No API call is made.
+/**
+ * SY-2: shown in place on guarded routes when a signed-in user has the wrong role.
+ * "In place" means the URL does not change. No API call is made.
+ *
+ * `<title>` inside a component sets the browser tab title (React 19 moves it into `<head>`).
+ * `tabIndex={-1}` lets code focus the heading (see `useFocusHeadingOnNavigate`) so screen readers announce the new page.
+ */
 export function ForbiddenPage() {
   return (
     <section className="grid max-w-prose gap-4">

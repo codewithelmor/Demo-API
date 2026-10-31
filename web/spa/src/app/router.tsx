@@ -1,3 +1,11 @@
+/**
+ * The route table: which URL shows which page, and who may see it.
+ *
+ * Routes are nested. The outer route (`/`) renders the layout and loads the session; the inner routes
+ * render inside it. Guards (`RequireRole`) and loaders (`guarded`) are attached to the groups of pages
+ * that need a session or a specific role. Pages are loaded lazily (`lazy`), which splits the code
+ * into chunks so the browser only downloads a page's code on the first visit.
+ */
 import type { QueryClient } from '@tanstack/react-query'
 import { createBrowserRouter, createMemoryRouter, redirect, type RouteObject } from 'react-router'
 import { NotFoundPage } from '@/app/not-found-page'
@@ -8,12 +16,15 @@ import { RootLayout } from '@/app/root-layout'
 import { RouteError } from '@/app/route-error'
 import { homeFor, loadSession } from '@/lib/session'
 
-// Session bootstrap (US-F006): the root loader asks the BFF who is signed in before anything renders.
+/**
+ * Session bootstrap (US-F006): the root loader asks the BFF who is signed in before anything renders.
+ * (BFF = "backend for frontend", the ASP.NET Core server that keeps the sign-in session.)
+ */
 function sessionLoader(queryClient: QueryClient) {
   return () => loadSession(queryClient)
 }
 
-// "/" sends people to their role home, or to sign-in.
+/** Loader for "/": redirects people to their role home, or to sign-in when nobody is signed in. */
 function homeLoader(queryClient: QueryClient) {
   return async () => {
     const user = await loadSession(queryClient)
@@ -21,7 +32,7 @@ function homeLoader(queryClient: QueryClient) {
   }
 }
 
-// A signed-in user who opens a public-only page goes to their role home.
+/** Loader for public-only pages (sign-in, register...): a signed-in user is redirected to their role home. */
 function publicOnlyLoader(queryClient: QueryClient) {
   return async () => {
     const user = await loadSession(queryClient)
@@ -29,6 +40,12 @@ function publicOnlyLoader(queryClient: QueryClient) {
   }
 }
 
+/**
+ * Builds the full route table.
+ *
+ * @param queryClient The shared data cache; loaders use it to read the session and prefetch data.
+ * @returns The route objects React Router understands. Exported separately from the router so tests can reuse it.
+ */
 export function createRoutes(queryClient: QueryClient): RouteObject[] {
   return [
     {
@@ -234,10 +251,12 @@ export function createRoutes(queryClient: QueryClient): RouteObject[] {
   ]
 }
 
+/** Creates the real router, which reads and writes the browser's address bar. Used by `main.tsx`. */
 export function createAppRouter(queryClient: QueryClient) {
   return createBrowserRouter(createRoutes(queryClient))
 }
 
+/** Creates a router that keeps the URL in memory, for tests. `initialEntries` is the list of URLs to start on. */
 export function createTestRouter(queryClient: QueryClient, initialEntries: string[]) {
   return createMemoryRouter(createRoutes(queryClient), { initialEntries })
 }

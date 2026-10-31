@@ -1,3 +1,4 @@
+/** The error screen React Router shows when a page or its data loader fails. */
 import { useEffect } from 'react'
 import { isRouteErrorResponse, Link, useRevalidator, useRouteError } from 'react-router'
 import { ForbiddenPage } from '@/app/forbidden-page'
@@ -7,14 +8,21 @@ import { ApiError } from '@/lib/problem-details'
 import { messageFor, referenceFor } from '@/lib/problem-messages'
 import { reportError } from '@/lib/report-error'
 
+/** Pulls an HTTP status out of whatever was thrown. Returns 0 when it is not an HTTP-style error. */
 function statusOf(error: unknown): number {
   if (error instanceof ApiError) return error.status
   if (isRouteErrorResponse(error)) return error.status
   return 0
 }
 
-// Route-level error boundary (SY-1, SY-2, SY-3): 403 and 404 get their own pages;
-// anything else shows a friendly message and the traceId as a reference.
+/**
+ * Route-level error boundary (SY-1, SY-2, SY-3). An "error boundary" is a component React shows
+ * instead of the page when something inside it throws.
+ *
+ * 403 and 404 get their own pages; anything else shows a friendly message and the `traceId` as a
+ * support reference the user can copy. "Try again" re-runs the route loaders.
+ * The error is also passed to `reportError` once, for logging.
+ */
 export function RouteError() {
   const error = useRouteError()
   const revalidator = useRevalidator()

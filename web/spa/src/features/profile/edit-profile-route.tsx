@@ -21,6 +21,7 @@ import { useServerFailure } from '@/hooks/use-server-failure'
 import { apiErrorMessage } from '@/lib/error-message'
 import { ApiError } from '@/lib/problem-details'
 
+/** A route loader: React Router runs it before the page shows, so the data is already loading when the page appears. Starts loading the profile. */
 export function editProfileLoader(queryClient: QueryClient) {
   return () => {
     queryClient.query(profileQuery).catch(() => undefined)
@@ -28,22 +29,29 @@ export function editProfileLoader(queryClient: QueryClient) {
   }
 }
 
+/** The form's field names. */
 const fieldNames = ['firstName', 'lastName', 'phone'] as const
+/** One of the form's field names. */
 type FieldName = (typeof fieldNames)[number]
 
+/** Converts the API profile into form values. */
 const toValues = (profile: Profile): ProfileValues => ({
   firstName: profile.firstName,
   lastName: profile.lastName,
   phone: profile.phone ?? '',
 })
 
+/** Visible name of each field. */
 const labels: Record<FieldName, string> = {
   firstName: 'First name',
   lastName: 'Last name',
   phone: 'Phone',
 }
 
-// CU-8 (EP-35 to read, EP-36 to save)
+/**
+ * CU-8 (EP-35 to read, EP-36 to save)
+ * Saves with an ETag; if someone changed the profile meanwhile (412), the user's input is kept and compared.
+ */
 export function EditProfileRoute() {
   const { data, error, isPending, isError, refetch, isFetching } = useQuery(profileQuery)
 
@@ -78,11 +86,13 @@ export function EditProfileRoute() {
   )
 }
 
+/** What one save needs: the values plus the ETag they were based on. */
 interface SaveVariables {
   etag: string | undefined
   values: ProfileValues
 }
 
+/** The edit form for an already-loaded profile. */
 function EditForm({ data }: { data: ProfileData }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()

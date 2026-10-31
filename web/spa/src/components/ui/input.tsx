@@ -1,7 +1,9 @@
 // shadcn/ui component, copied into the project (you own and can change this code).
+// Styling uses Tailwind CSS classes; `cn()` merges them so a caller's `className` can override the defaults.
 import type { ComponentProps } from 'react'
 import { cn } from '@/lib/utils'
 
+/** A single-line text box with the app's styling. Turns red when marked `aria-invalid`. */
 function Input({ className, type = 'text', ...props }: ComponentProps<'input'>) {
   return (
     <input

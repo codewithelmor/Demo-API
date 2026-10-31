@@ -1,6 +1,9 @@
 import { ApiError } from '@/lib/problem-details'
 
-// Slug -> user text (wireframes section 0.2). Unknown slugs fall back to the title (NFR-F20).
+/**
+ * Turns server error codes into text for people. Maps slug -> user text (wireframes section 0.2).
+ * Unknown slugs fall back to the server's title (NFR-F20).
+ */
 const messages: Record<string, string> = {
   'validation-failed': 'Check the highlighted fields and try again.',
   'invalid-token': 'This link is invalid or expired.',
@@ -36,6 +39,7 @@ const messages: Record<string, string> = {
   'email-change-not-allowed': 'Something went wrong on our side.',
 }
 
+/** Errors that mean this app sent a bad request (a bug on our side). The user gets generic text and a reference. */
 const clientBugSlugs = new Set([
   'payload-too-large',
   'unsupported-media-type',
@@ -44,10 +48,12 @@ const clientBugSlugs = new Set([
   'email-change-not-allowed',
 ])
 
+/** The text for "too many attempts" with the number of seconds to wait (also used by countdown buttons). */
 export function rateLimitMessage(seconds: number): string {
   return `Too many attempts. Try again in ${String(seconds)} seconds.`
 }
 
+/** The friendly message to show a person for an `ApiError`. Never exposes raw server details for 5xx errors. */
 export function messageFor(error: ApiError): string {
   if (error.status === 429 || error.slug === 'rate-limited') {
     return error.retryAfterSeconds === undefined
@@ -60,7 +66,10 @@ export function messageFor(error: ApiError): string {
   return error.problem.title ?? 'Something went wrong.'
 }
 
-// The reference (traceId) is shown for server errors, client-bug slugs and slugs the app does not know.
+/**
+ * The reference (the server's `traceId`) a person can quote to support. It is shown only for server
+ * errors, client-bug slugs and slugs the app does not know; for normal errors like a wrong password it is hidden.
+ */
 export function referenceFor(error: ApiError): string | undefined {
   const unknown = error.slug === undefined || !(error.slug in messages)
   const clientBug = error.slug !== undefined && clientBugSlugs.has(error.slug)

@@ -11,10 +11,14 @@ import { forgotPassword } from '@/features/auth/access-api'
 import { emailSchema, type EmailValues } from '@/features/auth/access-schemas'
 import { useServerFailure } from '@/hooks/use-server-failure'
 
+/** Neutral result text, the same for every email. */
 export const FORGOT_RESULT =
   'If an account exists for this email, we sent a link. It works for 1 hour.'
 
-// AN-7 (EP-10). The same result for every email, valid or not (anti-enumeration).
+/**
+ * AN-7 (EP-10): the "forgot password" page. The same result for every email, valid or not
+ * (anti-enumeration: the page never reveals whether an account exists).
+ */
 export function ForgotPasswordRoute() {
   const [sent, setSent] = useState(false)
   const {

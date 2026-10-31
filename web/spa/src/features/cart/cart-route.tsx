@@ -12,7 +12,10 @@ import { formatMoney } from '@/lib/money'
 import { ApiError } from '@/lib/problem-details'
 import { messageFor } from '@/lib/problem-messages'
 
-// What the cart page knows about a line after re-reading its product (EP-23).
+/**
+ * What the cart page knows about a line after re-reading its product (EP-23).
+ * Each cart line is re-read from the API when the page opens, so the stored price may differ from the real one.
+ */
 type LineState =
   | { kind: 'loading' }
   | { kind: 'gone' } // 404: the product was deleted
@@ -21,6 +24,7 @@ type LineState =
   | { kind: 'low-stock'; product: Product }
   | { kind: 'ok'; product: Product }
 
+/** Works out the {@link LineState} of a cart line from its product query result. */
 function stateOf(line: CartLine, query: UseQueryResult<Product>): LineState {
   if (query.isError) {
     return query.error instanceof ApiError && query.error.status === 404
@@ -40,9 +44,10 @@ function stateOf(line: CartLine, query: UseQueryResult<Product>): LineState {
   return { kind: 'ok', product }
 }
 
+/** True for lines that block ordering (removed, out of stock, too many...). */
 const hasProblem = (state: LineState) => state.kind !== 'ok' && state.kind !== 'loading'
 
-// Why Place order is off (wireframe CU-3), or undefined when it is on.
+/** Why Place order is off (wireframe CU-3), or undefined when it is on. */
 function blockReason(states: LineState[]): string | undefined {
   if (states.some((state) => state.kind === 'loading')) return 'Loading your products…'
   if (states.some((state) => ['gone', 'error', 'out-of-stock'].includes(state.kind))) {
@@ -54,12 +59,15 @@ function blockReason(states: LineState[]): string | undefined {
   return undefined
 }
 
-// Estimated total in cents, so adding prices never drifts (the final total comes from the order).
+/** Estimated total in cents, so adding prices never drifts (the final total comes from the order). */
 function lineCents(price: number, quantity: number): number {
   return Math.round(price * 100) * quantity
 }
 
-// CU-3. Add, change and remove lines. Each product is read again on open, so prices and stock are current.
+/**
+ * CU-3. Add, change and remove lines. Each product is read again on open, so prices and stock are current.
+ * Shows the lines, an estimated total, and the place-order panel. Removing a line offers Undo.
+ */
 export function CartRoute() {
   const cart = useCart()
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -198,6 +206,7 @@ export function CartRoute() {
   )
 }
 
+/** Props for {@link CartRow}. */
 interface CartRowProps {
   line: CartLine
   state: LineState
@@ -206,6 +215,7 @@ interface CartRowProps {
   onRemove: (name: string) => void
 }
 
+/** One line of the cart: product name, price, quantity control, a warning if it has a problem, and a remove button. */
 function CartRow({ line, state, conflict, onQuantity, onRemove }: CartRowProps) {
   if (state.kind === 'loading') {
     return (

@@ -3,10 +3,15 @@ import { useNavigate } from 'react-router'
 import { clearCartFor } from '@/lib/cart-storage'
 import { endSessionLocally, useSession, type SessionEndReason } from '@/lib/session'
 
-// Leaves the signed-in state in the SPA after the BFF ended the session, and goes to sign-in with a reason.
-// The cart is cleared only when asked (Sign out, Sign out everywhere, Delete account; UX-D2, NFR-F41),
-// never when a session just ends (for example after a password change).
-// RequireRole redirects to the same address when the session goes, so the two navigations agree.
+/**
+ * React hook that returns a function to leave the signed-in state in the SPA after the BFF ended the
+ * session, and go to sign-in with a reason. Call it after the server call (sign out, password change,
+ * delete account) has succeeded.
+ *
+ * The cart is cleared only when asked (Sign out, Sign out everywhere, Delete account; UX-D2, NFR-F41),
+ * never when a session just ends (for example after a password change).
+ * `RequireRole` redirects to the same address when the session goes, so the two navigations agree.
+ */
 export function useEndSession() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()

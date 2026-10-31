@@ -12,10 +12,14 @@ import { useEndSession } from '@/hooks/use-end-session'
 import { useServerFailure } from '@/hooks/use-server-failure'
 import { codePointLength, PASSWORD_MAX, PASSWORD_MIN } from '@/lib/field-rules'
 
+/** Message for a wrong current password. */
 const WRONG_PASSWORD =
   'Current password is incorrect. After 5 failed attempts your account is locked for 15 minutes.'
 
-// CU-9 (EP-09)
+/**
+ * CU-9 (EP-09)
+ * The change-password page. On success the session ends and the user signs in again with the new password.
+ */
 export function ChangePasswordRoute() {
   const endSession = useEndSession()
   const {
