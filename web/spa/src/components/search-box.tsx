@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { FormField } from '@/components/form-field'
 import { Input } from '@/components/ui/input'
+import { useDebouncedCallback } from '@/hooks/use-debounced-callback'
 import { SEARCH_MAX, SEARCH_MIN } from '@/lib/field-rules'
 
 /** "Debounce": wait this long after the last keystroke before searching, so we do not send a request per letter. */
@@ -24,7 +25,10 @@ export function SearchBox({ value, onSearch }: SearchBoxProps) {
   // The last value this box put into the URL, and the URL value it last saw.
   const [committed, setCommitted] = useState(value)
   const [seen, setSeen] = useState(value)
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const send = useDebouncedCallback((trimmed: string) => {
+    setCommitted(trimmed)
+    onSearch(trimmed === '' ? undefined : trimmed)
+  }, DEBOUNCE_MS)
 
   // The URL changed by something else (Clear filters, Back): show it. A change this box made
   // itself must not overwrite what the user has typed since.
@@ -36,23 +40,13 @@ export function SearchBox({ value, onSearch }: SearchBoxProps) {
     }
   }
 
-  useEffect(
-    () => () => {
-      clearTimeout(timer.current)
-    },
-    [],
-  )
-
   /** Handles typing: restarts the wait, and after it sends the search (unless it is a single character). */
   function change(next: string) {
     setText(next)
-    clearTimeout(timer.current)
     const trimmed = next.trim()
-    if (trimmed.length === 1) return
-    timer.current = setTimeout(() => {
-      setCommitted(trimmed)
-      onSearch(trimmed === '' ? undefined : trimmed)
-    }, DEBOUNCE_MS)
+    // One character is too short: drop any pending search and send nothing.
+    if (trimmed.length === 1) send.cancel()
+    else send.run(trimmed)
   }
 
   const tooShort = text.trim().length > 0 && text.trim().length < SEARCH_MIN
